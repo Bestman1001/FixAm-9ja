@@ -64,6 +64,7 @@ const demoArtisans = [
 }));
 
 let artisans = [...demoArtisans];
+let qoreIdRestoreTimer = null;
 
 function serviceSkills(category) {
   const skills = {
@@ -821,11 +822,54 @@ async function launchQoreIdWorkflow(action) {
 }
 
 function enterQoreIdMode() {
+  const hiddenElements = [".topbar", "footer"].flatMap((selector) =>
+    Array.from(document.querySelectorAll(selector)),
+  );
+
+  document.documentElement.classList.add("qoreid-active");
   document.body.classList.add("qoreid-active");
-  window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+
+  hiddenElements.forEach((element) => {
+    if (!element.dataset.fixamPreviousDisplay) {
+      element.dataset.fixamPreviousDisplay = element.style.display || " ";
+      element.dataset.fixamPreviousVisibility = element.style.visibility || " ";
+    }
+    element.style.display = "none";
+    element.style.visibility = "hidden";
+  });
+
+  window.scrollTo(0, 0);
+  window.setTimeout(() => window.scrollTo(0, 0), 100);
+
+  if (qoreIdRestoreTimer) window.clearInterval(qoreIdRestoreTimer);
+  qoreIdRestoreTimer = window.setInterval(() => {
+    if (!document.body.classList.contains("qoreid-active")) return;
+    hiddenElements.forEach((element) => {
+      element.style.display = "none";
+      element.style.visibility = "hidden";
+    });
+  }, 500);
 }
 
 function exitQoreIdMode() {
+  if (qoreIdRestoreTimer) {
+    window.clearInterval(qoreIdRestoreTimer);
+    qoreIdRestoreTimer = null;
+  }
+
+  [".topbar", "footer"].forEach((selector) => {
+    document.querySelectorAll(selector).forEach((element) => {
+      const previousDisplay = element.dataset.fixamPreviousDisplay;
+      const previousVisibility = element.dataset.fixamPreviousVisibility;
+
+      element.style.display = previousDisplay && previousDisplay !== " " ? previousDisplay : "";
+      element.style.visibility = previousVisibility && previousVisibility !== " " ? previousVisibility : "";
+      delete element.dataset.fixamPreviousDisplay;
+      delete element.dataset.fixamPreviousVisibility;
+    });
+  });
+
+  document.documentElement.classList.remove("qoreid-active");
   document.body.classList.remove("qoreid-active");
 }
 

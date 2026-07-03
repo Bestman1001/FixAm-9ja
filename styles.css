@@ -29,15 +29,24 @@ body {
   color: var(--ink);
 }
 
+html.qoreid-active,
 body.qoreid-active {
   background: #fff;
 }
 
-body.qoreid-active .topbar,
-body.qoreid-active footer {
-  display: none;
+html.qoreid-active {
+  scroll-behavior: auto;
 }
 
+html.qoreid-active .topbar,
+body.qoreid-active .topbar,
+html.qoreid-active footer,
+body.qoreid-active footer {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+html.qoreid-active body,
 body.qoreid-active main {
   min-height: 100dvh;
   background: #fff;
