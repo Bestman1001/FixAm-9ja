@@ -29,6 +29,20 @@ body {
   color: var(--ink);
 }
 
+body.qoreid-active {
+  background: #fff;
+}
+
+body.qoreid-active .topbar,
+body.qoreid-active footer {
+  display: none;
+}
+
+body.qoreid-active main {
+  min-height: 100dvh;
+  background: #fff;
+}
+
 button,
 input,
 select {

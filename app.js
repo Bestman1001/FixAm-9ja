@@ -781,17 +781,21 @@ function setJoinStatus(message, type, action = "") {
 async function launchQoreIdWorkflow(action) {
   try {
     setJoinStatus("Opening secure QoreID identity check...", "");
+    enterQoreIdMode();
     const QoreID = await loadQoreIdSdk();
     const name = splitFullName(action.fullName || "");
 
     if (typeof QoreID.on === "function" && !QoreID.__fixamListenersAttached) {
       QoreID.on("success", () => {
+        exitQoreIdMode();
         setJoinStatus("Identity check completed. FixAm 9ja will confirm the verification result shortly.", "success");
       });
       QoreID.on("error", () => {
+        exitQoreIdMode();
         setJoinStatus("QoreID could not complete the identity check. Please try again or FixAm 9ja will review manually.", "error", action);
       });
       QoreID.on("close", () => {
+        exitQoreIdMode();
         setJoinStatus("Identity check was closed before completion. You can start it again when ready.", "error", action);
       });
       QoreID.__fixamListenersAttached = true;
@@ -808,11 +812,21 @@ async function launchQoreIdWorkflow(action) {
       },
     });
   } catch (error) {
+    exitQoreIdMode();
     setJoinStatus(
       `QoreID identity check could not open: ${error.message || "SDK unavailable"}. FixAm 9ja will review manually.`,
       "error",
     );
   }
+}
+
+function enterQoreIdMode() {
+  document.body.classList.add("qoreid-active");
+  window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+}
+
+function exitQoreIdMode() {
+  document.body.classList.remove("qoreid-active");
 }
 
 async function loadQoreIdSdk() {
