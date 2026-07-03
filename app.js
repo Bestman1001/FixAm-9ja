@@ -554,6 +554,9 @@ joinForm.addEventListener("submit", async (event) => {
     url: verificationResult.verification_url,
     sdkSessionToken: verificationResult.sdk_session_token,
     reference: verificationResult.reference || applicationCode,
+    applicationCode,
+    plan: payload.subscription_plan,
+    amount: payload.subscription_amount,
     fullName,
     email: applicantEmail,
     phone: payload.phone,
@@ -755,6 +758,7 @@ function setJoinStatus(message, type, action = "") {
 
   const actionUrl = typeof action === "string" ? action : action?.url;
   const sdkSessionToken = typeof action === "object" ? action?.sdkSessionToken : "";
+  const canRequestSubscription = typeof action === "object" && action?.applicationCode && action?.amount;
 
   if (sdkSessionToken) {
     const button = document.createElement("button");
@@ -764,7 +768,6 @@ function setJoinStatus(message, type, action = "") {
     button.addEventListener("click", () => launchQoreIdWorkflow(action));
     joinNote.appendChild(document.createElement("br"));
     joinNote.appendChild(button);
-    return;
   }
 
   if (actionUrl) {
@@ -777,6 +780,54 @@ function setJoinStatus(message, type, action = "") {
     joinNote.appendChild(document.createElement("br"));
     joinNote.appendChild(link);
   }
+
+  if (canRequestSubscription) {
+    const subscriptionButton = document.createElement("button");
+    subscriptionButton.type = "button";
+    subscriptionButton.className = "status-action-link";
+    subscriptionButton.textContent = `Request subscription activation - ${formatNaira(action.amount)}`;
+    subscriptionButton.addEventListener("click", () => createSubscriptionRequest(action, subscriptionButton));
+    joinNote.appendChild(document.createElement("br"));
+    joinNote.appendChild(subscriptionButton);
+  }
+}
+
+async function createSubscriptionRequest(action, button) {
+  if (!supabaseClient) {
+    setJoinStatus("Subscription request is ready, but Supabase is not configured yet.", "error", action);
+    return;
+  }
+
+  button.disabled = true;
+  button.textContent = "Saving activation request...";
+  const requestCode = `F9-S-${Date.now().toString().slice(-6)}`;
+  const { error } = await supabaseClient.from("subscription_requests").insert({
+    request_code: requestCode,
+    application_code: action.applicationCode,
+    applicant_email: action.email,
+    applicant_user_id: await currentUserId(),
+    applicant_phone: action.phone,
+    applicant_name: action.fullName,
+    plan: action.plan || "monthly",
+    amount: Number(action.amount || 2500),
+    status: "pending",
+    channel: "manual_activation",
+    source: "website",
+  });
+
+  if (error) {
+    setJoinStatus(
+      `Subscription activation could not be saved yet: ${error.message}. Run the Phase 7 SQL, then try again.`,
+      "error",
+      action,
+    );
+    return;
+  }
+
+  setJoinStatus(
+    `Subscription activation request ${requestCode} saved. FixAm 9ja will confirm payment setup before public listing.`,
+    "success",
+  );
 }
 
 async function launchQoreIdWorkflow(action) {

@@ -61,6 +61,10 @@ The `artisans` table is the real public directory. Admin can turn an application
 
 Phase 5 adds Supabase Auth account profiles and a public `fixam-media` Storage bucket. Customers can attach job photos/videos to quote requests and reviews. Artisans can attach portfolio media during onboarding, claim a matching phone-number profile, and upload more portfolio media from `account.html`.
 
+## Phase 7 Subscriptions
+
+Phase 7 adds subscription activation requests. After an artisan submits an application, FixAm can save a subscription request for the selected plan. Admin can review these requests from the Subscriptions tab and mark them active after payment confirmation. Public marketplace visibility still requires an active profile, verified identity, and active subscription.
+
 ## Run Locally
 
 Open `index.html` in a browser, or serve the folder with any static web server.

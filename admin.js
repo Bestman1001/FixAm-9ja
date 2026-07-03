@@ -34,6 +34,7 @@ const refreshButton = document.querySelector("#refreshButton");
 const magicLinkButton = document.querySelector("#magicLinkButton");
 const quoteList = document.querySelector("#quoteList");
 const applicationList = document.querySelector("#applicationList");
+const subscriptionList = document.querySelector("#subscriptionList");
 const profileList = document.querySelector("#profileList");
 const reviewList = document.querySelector("#reviewList");
 const qualityList = document.querySelector("#qualityList");
@@ -43,6 +44,7 @@ const statusFilter = document.querySelector("#statusFilter");
 
 let quotes = [];
 let applications = [];
+let subscriptionRequests = [];
 let artisans = [];
 let reviews = [];
 let qualityControls = [];
@@ -116,6 +118,7 @@ document.querySelectorAll("[data-view]").forEach((button) => {
     document.querySelectorAll("[data-view]").forEach((item) => item.classList.toggle("is-active", item === button));
     quoteList.hidden = activeView !== "quotes";
     applicationList.hidden = activeView !== "applications";
+    subscriptionList.hidden = activeView !== "subscriptions";
     profileList.hidden = activeView !== "artisans";
     reviewList.hidden = activeView !== "reviews";
     qualityList.hidden = activeView !== "quality";
@@ -146,6 +149,12 @@ applicationList.addEventListener("click", async (event) => {
   const button = event.target.closest("[data-create-artisan]");
   if (!button) return;
   await createArtisanFromApplication(button.dataset.createArtisan);
+});
+
+subscriptionList.addEventListener("change", async (event) => {
+  const select = event.target.closest("[data-subscription-status]");
+  if (!select) return;
+  await updateSubscriptionRequest(select.dataset.subscriptionStatus, select.value);
 });
 
 profileList.addEventListener("change", async (event) => {
@@ -196,7 +205,7 @@ async function loadDashboard() {
   sessionEmail.textContent = session.user.email || "Signed in";
   signOutButton.hidden = false;
 
-  const [quoteResult, applicationResult, artisanResult, reviewResult, qualityResult] = await Promise.all([
+  const [quoteResult, applicationResult, subscriptionResult, artisanResult, reviewResult, qualityResult] = await Promise.all([
     supabaseClient
       .from("quote_requests")
       .select(
@@ -209,6 +218,13 @@ async function loadDashboard() {
         .select(
           "id, application_code, applicant_user_id, applicant_email, full_name, trade, state, area, phone, preferred_plan, years_experience, work_summary, status, media_count, nin_last4, nin_consent, liveness_consent, verification_media_count, identity_verification_status, subscription_status, subscription_amount, created_at",
         )
+      .order("created_at", { ascending: false })
+      .limit(100),
+    supabaseClient
+      .from("subscription_requests")
+      .select(
+        "id, request_code, application_code, artisan_id, applicant_email, applicant_name, applicant_phone, plan, amount, status, channel, payment_reference, created_at, updated_at",
+      )
       .order("created_at", { ascending: false })
       .limit(100),
     supabaseClient
@@ -253,13 +269,16 @@ async function loadDashboard() {
 
   quotes = quoteResult.data || [];
   applications = applicationResult.data || [];
+  subscriptionRequests = subscriptionResult.error ? [] : subscriptionResult.data || [];
   artisans = artisanResult.data || [];
   reviews = reviewResult.data || [];
   qualityControls = qualityResult.data || [];
   setNote(
     dashboardNote,
-    `Loaded ${quotes.length} quotes, ${applications.length} applications, ${artisans.length} artisans, and ${reviews.length} reviews.`,
-    "success",
+    subscriptionResult.error
+      ? `Loaded ${quotes.length} quotes, ${applications.length} applications, ${artisans.length} artisans, and ${reviews.length} reviews. Phase 7 subscription table is not live yet: ${subscriptionResult.error.message}`
+      : `Loaded ${quotes.length} quotes, ${applications.length} applications, ${subscriptionRequests.length} subscription requests, ${artisans.length} artisans, and ${reviews.length} reviews.`,
+    subscriptionResult.error ? "error" : "success",
   );
   renderDashboard();
 }
@@ -267,6 +286,7 @@ async function loadDashboard() {
 function renderDashboard() {
   const filteredQuotes = filterRows(quotes, "artisan_state");
   const filteredApplications = filterRows(applications, "state");
+  const filteredSubscriptions = filterSubscriptionRequests(subscriptionRequests);
   const filteredArtisans = filterArtisans(artisans);
   const filteredReviews = filterRows(reviews, "artisan_state", "visibility");
   const filteredQuality = filterRows(buildQualityRows(), "artisan_state", "standing");
@@ -278,6 +298,10 @@ function renderDashboard() {
   applicationList.innerHTML = filteredApplications.length
     ? filteredApplications.map(renderApplicationCard).join("")
     : `<article class="empty-state">No artisan applications match the current filters.</article>`;
+
+  subscriptionList.innerHTML = filteredSubscriptions.length
+    ? filteredSubscriptions.map(renderSubscriptionCard).join("")
+    : `<article class="empty-state">No subscription activation requests match the current filters.</article>`;
 
   profileList.innerHTML = filteredArtisans.length
     ? filteredArtisans.map(renderArtisanCard).join("")
@@ -292,6 +316,17 @@ function renderDashboard() {
     : `<article class="empty-state">No artisan quality records match the current filters.</article>`;
 
   renderMetrics();
+}
+
+function filterSubscriptionRequests(rows) {
+  return rows
+    .filter((row) => {
+      if (stateFilter.value === "all") return true;
+      const application = applications.find((item) => item.application_code === row.application_code);
+      const artisan = artisans.find((item) => item.id === row.artisan_id);
+      return application?.state === stateFilter.value || artisan?.state === stateFilter.value;
+    })
+    .filter((row) => statusFilter.value === "all" || row.status === statusFilter.value);
 }
 
 function filterRows(rows, stateKey, statusKey = "status") {
@@ -318,6 +353,7 @@ function renderMetrics() {
   const newQuotes = quotes.filter((quote) => quote.status === "new").length;
   const newApplications = applications.filter((application) => application.status === "new").length;
   const liveArtisans = artisans.filter((artisan) => artisan.profile_status === "active").length;
+  const pendingSubscriptions = subscriptionRequests.filter((request) => request.status === "pending").length;
   const inProgress =
     quotes.filter((quote) => ["contacted", "accepted"].includes(quote.status)).length +
     applications.filter((application) => ["reviewing", "approved"].includes(application.status)).length;
@@ -329,11 +365,53 @@ function renderMetrics() {
     [newQuotes, "New quotes"],
     [newApplications, "New applications"],
     [liveArtisans, "Live artisans"],
+    [pendingSubscriptions, "Pending subscriptions"],
     [inProgress, "In progress"],
     [completed, "Completed/listed"],
   ]
     .map(([value, label]) => `<article><strong>${value}</strong><span>${label}</span></article>`)
     .join("");
+}
+
+function renderSubscriptionCard(request) {
+  const application = applications.find((item) => item.application_code === request.application_code);
+  const artisan = artisans.find((item) => item.id === request.artisan_id);
+  const location = application
+    ? `${application.area}, ${application.state}`
+    : artisan
+      ? `${artisan.area}, ${artisan.state}`
+      : "No linked location";
+
+  return `
+    <article class="work-card">
+      <div>
+        <div class="badge-row">
+          <span class="badge gold">${escapeHtml(request.status)}</span>
+          <span class="badge">${escapeHtml(request.request_code)}</span>
+          <span class="badge">${formatDate(request.created_at)}</span>
+        </div>
+        <h3>${escapeHtml(request.applicant_name || application?.full_name || artisan?.business_name || "Subscription request")}</h3>
+        <p>${escapeHtml(request.application_code || "No application code")} - ${escapeHtml(location)}</p>
+        <div class="work-meta">
+          <span class="badge">${escapeHtml(request.applicant_email || "No email")}</span>
+          <span class="badge">${escapeHtml(request.applicant_phone || "No phone")}</span>
+          <span class="badge">${titleCase(request.plan || "monthly")}</span>
+          <span class="badge">${formatNaira(request.amount)}</span>
+          <span class="badge">${escapeHtml(request.channel || "manual_activation")}</span>
+          <span class="badge">${escapeHtml(request.payment_reference || "No payment ref")}</span>
+        </div>
+      </div>
+      <div class="work-actions">
+        <label>
+          <span>Activation</span>
+          <select data-subscription-status="${request.id}">
+            ${subscriptionStatuses.map((status) => option(status, request.status)).join("")}
+          </select>
+        </label>
+        <p class="mini-note">Confirm after payment. Active subscriptions unlock public listing when identity is verified.</p>
+      </div>
+    </article>
+  `;
 }
 
 function renderQuoteCard(quote) {
@@ -608,6 +686,82 @@ async function updateStatus(table, id, status, field = "status") {
 
   setNote(dashboardNote, "Status updated.", "success");
   renderDashboard();
+}
+
+async function updateSubscriptionRequest(requestId, status) {
+  const request = subscriptionRequests.find((item) => item.id === requestId);
+  if (!request) return;
+
+  setNote(dashboardNote, "Updating subscription activation...", "");
+  const payload = {
+    status,
+    updated_at: new Date().toISOString(),
+  };
+  if (status === "active" && !request.payment_reference) {
+    payload.payment_reference = request.request_code;
+  }
+
+  const { error } = await supabaseClient.from("subscription_requests").update(payload).eq("id", requestId);
+  if (error) {
+    setNote(dashboardNote, error.message, "error");
+    return;
+  }
+
+  Object.assign(request, payload);
+
+  if (request.application_code) {
+    const applicationPayload = {
+      subscription_status: status,
+      subscription_plan: request.plan,
+      subscription_amount: Number(request.amount || subscriptionAmountForPlan(request.plan)),
+    };
+    await supabaseClient
+      .from("artisan_applications")
+      .update(applicationPayload)
+      .eq("application_code", request.application_code);
+
+    const application = applications.find((item) => item.application_code === request.application_code);
+    if (application) Object.assign(application, applicationPayload);
+  }
+
+  const linkedApplicationId = applicationIdForCode(request.application_code);
+  if (request.artisan_id || linkedApplicationId) {
+    const artisanPayload = {
+      subscription_status: status,
+      subscription_plan: request.plan,
+      subscription_amount: Number(request.amount || subscriptionAmountForPlan(request.plan)),
+      payment_reference: payload.payment_reference || request.payment_reference || null,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (status === "active") {
+      artisanPayload.subscription_started_at = new Date().toISOString();
+      artisanPayload.subscription_expires_at = subscriptionExpiryForPlan(request.plan);
+    }
+
+    const query = supabaseClient.from("artisans").update(artisanPayload);
+    await (request.artisan_id ? query.eq("id", request.artisan_id) : query.eq("application_id", linkedApplicationId));
+
+    artisans
+      .filter((artisan) => artisan.id === request.artisan_id || artisan.application_id === linkedApplicationId)
+      .forEach((artisan) => Object.assign(artisan, artisanPayload));
+  }
+
+  setNote(dashboardNote, status === "active" ? "Subscription activated." : "Subscription status updated.", "success");
+  renderDashboard();
+}
+
+function applicationIdForCode(applicationCode) {
+  return applications.find((item) => item.application_code === applicationCode)?.id || "";
+}
+
+function subscriptionExpiryForPlan(plan) {
+  const start = new Date();
+  const normalized = normalizeSubscriptionPlan(plan);
+  if (normalized === "annual") start.setFullYear(start.getFullYear() + 1);
+  else if (normalized === "biannual") start.setMonth(start.getMonth() + 6);
+  else start.setMonth(start.getMonth() + 1);
+  return start.toISOString();
 }
 
 async function createArtisanFromApplication(applicationId) {

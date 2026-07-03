@@ -297,6 +297,82 @@ create unique index if not exists artisans_application_id_unique_idx
   on public.artisans (application_id)
   where application_id is not null;
 
+create table if not exists public.subscription_requests (
+  id uuid primary key default gen_random_uuid(),
+  request_code text unique not null,
+  application_code text references public.artisan_applications(application_code) on delete set null,
+  artisan_id uuid references public.artisans(id) on delete set null,
+  applicant_user_id uuid references auth.users(id) on delete set null,
+  applicant_email text,
+  applicant_name text,
+  applicant_phone text,
+  plan text not null default 'monthly' check (plan in ('monthly', 'biannual', 'annual')),
+  amount integer not null default 2500,
+  status text not null default 'pending' check (status in ('pending', 'active', 'past_due', 'cancelled', 'expired')),
+  channel text not null default 'manual_activation',
+  payment_reference text,
+  source text not null default 'website',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists subscription_requests_created_at_idx
+  on public.subscription_requests (created_at desc);
+
+create index if not exists subscription_requests_application_idx
+  on public.subscription_requests (application_code);
+
+create index if not exists subscription_requests_status_idx
+  on public.subscription_requests (status);
+
+alter table public.subscription_requests enable row level security;
+
+drop policy if exists "Anyone can create subscription requests" on public.subscription_requests;
+drop policy if exists "Admins can read subscription requests" on public.subscription_requests;
+drop policy if exists "Admins can update subscription requests" on public.subscription_requests;
+drop policy if exists "Applicants can read own subscription requests" on public.subscription_requests;
+
+create policy "Anyone can create subscription requests"
+  on public.subscription_requests
+  for insert
+  to anon, authenticated
+  with check (
+    status = 'pending'
+    and amount > 0
+    and plan in ('monthly', 'biannual', 'annual')
+  );
+
+create policy "Admins can read subscription requests"
+  on public.subscription_requests
+  for select
+  to authenticated
+  using (exists (
+    select 1 from public.admin_profiles
+    where admin_profiles.user_id = auth.uid()
+  ));
+
+create policy "Admins can update subscription requests"
+  on public.subscription_requests
+  for update
+  to authenticated
+  using (exists (
+    select 1 from public.admin_profiles
+    where admin_profiles.user_id = auth.uid()
+  ))
+  with check (exists (
+    select 1 from public.admin_profiles
+    where admin_profiles.user_id = auth.uid()
+  ));
+
+create policy "Applicants can read own subscription requests"
+  on public.subscription_requests
+  for select
+  to authenticated
+  using (
+    applicant_user_id = auth.uid()
+    or lower(applicant_email) = lower((auth.jwt() ->> 'email'))
+  );
+
 alter table public.artisans enable row level security;
 
 drop policy if exists "Anyone can read active artisans" on public.artisans;

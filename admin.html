@@ -106,6 +106,7 @@
         <nav class="tabs" aria-label="Dashboard views">
           <button class="is-active" type="button" data-view="quotes">Quote requests</button>
           <button type="button" data-view="applications">Artisan applications</button>
+          <button type="button" data-view="subscriptions">Subscriptions</button>
           <button type="button" data-view="artisans">Artisan profiles</button>
           <button type="button" data-view="reviews">Customer reviews</button>
           <button type="button" data-view="quality">Artisan quality</button>
@@ -115,6 +116,7 @@
 
         <section class="work-list" id="quoteList" aria-live="polite"></section>
         <section class="work-list" id="applicationList" aria-live="polite" hidden></section>
+        <section class="work-list" id="subscriptionList" aria-live="polite" hidden></section>
         <section class="work-list" id="profileList" aria-live="polite" hidden></section>
         <section class="work-list" id="reviewList" aria-live="polite" hidden></section>
         <section class="work-list" id="qualityList" aria-live="polite" hidden></section>
@@ -123,6 +125,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase-config.js?v=phase5"></script>
-    <script src="admin.js?v=phase6-liveness-ready"></script>
+    <script src="admin.js?v=phase7-subscriptions"></script>
   </body>
 </html>
