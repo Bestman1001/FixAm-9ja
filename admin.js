@@ -11,6 +11,7 @@ const artisanPlans = ["Basic", "Verified", "Pro", "Business"];
 const verificationStatuses = ["pending", "reviewed", "verified"];
 const identityVerificationStatuses = ["pending", "verified", "failed"];
 const subscriptionStatuses = ["pending", "founding", "free_trial", "active", "past_due", "cancelled", "expired"];
+const serviceStatuses = ["active", "paused", "removed"];
 const reviewVisibilityStatuses = ["public", "flagged", "hidden"];
 const artisanStandingStatuses = ["active", "warning", "suspended", "removed"];
 const states = ["Lagos", "Abuja/FCT", "Edo", "Ogun", "Delta", "Rivers"];
@@ -35,6 +36,7 @@ const magicLinkButton = document.querySelector("#magicLinkButton");
 const quoteList = document.querySelector("#quoteList");
 const applicationList = document.querySelector("#applicationList");
 const subscriptionList = document.querySelector("#subscriptionList");
+const serviceList = document.querySelector("#serviceList");
 const profileList = document.querySelector("#profileList");
 const reviewList = document.querySelector("#reviewList");
 const qualityList = document.querySelector("#qualityList");
@@ -45,6 +47,7 @@ const statusFilter = document.querySelector("#statusFilter");
 let quotes = [];
 let applications = [];
 let subscriptionRequests = [];
+let serviceCategories = [];
 let artisans = [];
 let reviews = [];
 let qualityControls = [];
@@ -119,6 +122,7 @@ document.querySelectorAll("[data-view]").forEach((button) => {
     quoteList.hidden = activeView !== "quotes";
     applicationList.hidden = activeView !== "applications";
     subscriptionList.hidden = activeView !== "subscriptions";
+    serviceList.hidden = activeView !== "services";
     profileList.hidden = activeView !== "artisans";
     reviewList.hidden = activeView !== "reviews";
     qualityList.hidden = activeView !== "quality";
@@ -155,6 +159,19 @@ subscriptionList.addEventListener("change", async (event) => {
   const select = event.target.closest("[data-subscription-status]");
   if (!select) return;
   await updateSubscriptionRequest(select.dataset.subscriptionStatus, select.value);
+});
+
+serviceList.addEventListener("submit", async (event) => {
+  const form = event.target.closest("[data-service-form]");
+  if (!form) return;
+  event.preventDefault();
+  await saveServiceCategory(form);
+});
+
+serviceList.addEventListener("change", async (event) => {
+  const select = event.target.closest("[data-service-status]");
+  if (!select) return;
+  await updateServiceStatus(select.dataset.serviceStatus, select.value);
 });
 
 profileList.addEventListener("change", async (event) => {
@@ -205,7 +222,8 @@ async function loadDashboard() {
   sessionEmail.textContent = session.user.email || "Signed in";
   signOutButton.hidden = false;
 
-  const [quoteResult, applicationResult, subscriptionResult, artisanResult, reviewResult, qualityResult] = await Promise.all([
+  const [quoteResult, applicationResult, subscriptionResult, serviceResult, artisanResult, reviewResult, qualityResult] =
+    await Promise.all([
     supabaseClient
       .from("quote_requests")
       .select(
@@ -227,6 +245,11 @@ async function loadDashboard() {
       )
       .order("created_at", { ascending: false })
       .limit(100),
+    supabaseClient
+      .from("service_categories")
+      .select("id, name, description, skills, status, sort_order, created_at, updated_at")
+      .order("sort_order", { ascending: true })
+      .order("name", { ascending: true }),
     supabaseClient
       .from("artisans")
       .select(
@@ -270,15 +293,18 @@ async function loadDashboard() {
   quotes = quoteResult.data || [];
   applications = applicationResult.data || [];
   subscriptionRequests = subscriptionResult.error ? [] : subscriptionResult.data || [];
+  serviceCategories = serviceResult.error ? [] : serviceResult.data || [];
   artisans = artisanResult.data || [];
   reviews = reviewResult.data || [];
   qualityControls = qualityResult.data || [];
   setNote(
     dashboardNote,
-    subscriptionResult.error
-      ? `Loaded ${quotes.length} quotes, ${applications.length} applications, ${artisans.length} artisans, and ${reviews.length} reviews. Phase 7 subscription table is not live yet: ${subscriptionResult.error.message}`
-      : `Loaded ${quotes.length} quotes, ${applications.length} applications, ${subscriptionRequests.length} subscription requests, ${artisans.length} artisans, and ${reviews.length} reviews.`,
-    subscriptionResult.error ? "error" : "success",
+    [subscriptionResult.error, serviceResult.error].some(Boolean)
+      ? `Loaded ${quotes.length} quotes, ${applications.length} applications, ${artisans.length} artisans, and ${reviews.length} reviews. Missing optional table: ${
+          subscriptionResult.error?.message || serviceResult.error?.message
+        }`
+      : `Loaded ${quotes.length} quotes, ${applications.length} applications, ${subscriptionRequests.length} subscription requests, ${serviceCategories.length} services, ${artisans.length} artisans, and ${reviews.length} reviews.`,
+    [subscriptionResult.error, serviceResult.error].some(Boolean) ? "error" : "success",
   );
   renderDashboard();
 }
@@ -287,6 +313,7 @@ function renderDashboard() {
   const filteredQuotes = filterRows(quotes, "artisan_state");
   const filteredApplications = filterRows(applications, "state");
   const filteredSubscriptions = filterSubscriptionRequests(subscriptionRequests);
+  const filteredServices = filterServiceCategories(serviceCategories);
   const filteredArtisans = filterArtisans(artisans);
   const filteredReviews = filterRows(reviews, "artisan_state", "visibility");
   const filteredQuality = filterRows(buildQualityRows(), "artisan_state", "standing");
@@ -303,6 +330,8 @@ function renderDashboard() {
     ? filteredSubscriptions.map(renderSubscriptionCard).join("")
     : `<article class="empty-state">No subscription activation requests match the current filters.</article>`;
 
+  serviceList.innerHTML = renderServiceManager(filteredServices);
+
   profileList.innerHTML = filteredArtisans.length
     ? filteredArtisans.map(renderArtisanCard).join("")
     : `<article class="empty-state">No artisan profiles match the current filters.</article>`;
@@ -316,6 +345,10 @@ function renderDashboard() {
     : `<article class="empty-state">No artisan quality records match the current filters.</article>`;
 
   renderMetrics();
+}
+
+function filterServiceCategories(rows) {
+  return rows.filter((row) => statusFilter.value === "all" || row.status === statusFilter.value);
 }
 
 function filterSubscriptionRequests(rows) {
@@ -354,6 +387,7 @@ function renderMetrics() {
   const newApplications = applications.filter((application) => application.status === "new").length;
   const liveArtisans = artisans.filter((artisan) => artisan.profile_status === "active").length;
   const pendingSubscriptions = subscriptionRequests.filter((request) => request.status === "pending").length;
+  const activeServices = serviceCategories.filter((service) => service.status === "active").length;
   const inProgress =
     quotes.filter((quote) => ["contacted", "accepted"].includes(quote.status)).length +
     applications.filter((application) => ["reviewing", "approved"].includes(application.status)).length;
@@ -366,6 +400,7 @@ function renderMetrics() {
     [newApplications, "New applications"],
     [liveArtisans, "Live artisans"],
     [pendingSubscriptions, "Pending subscriptions"],
+    [activeServices, "Active services"],
     [inProgress, "In progress"],
     [completed, "Completed/listed"],
   ]
@@ -410,6 +445,94 @@ function renderSubscriptionCard(request) {
         </label>
         <p class="mini-note">Founding/free trial/active access can unlock public listing when identity is verified.</p>
       </div>
+    </article>
+  `;
+}
+
+function renderServiceManager(services) {
+  const serviceCards = services.length
+    ? services.map(renderServiceCard).join("")
+    : `<article class="empty-state">No services match the current status filter.</article>`;
+
+  return `
+    <article class="work-card service-card">
+      <div>
+        <div class="badge-row">
+          <span class="badge gold">catalog</span>
+          <span class="badge">Admin managed</span>
+        </div>
+        <h3>Add a service</h3>
+        <p>Add new trades here so they appear on the marketplace category list and artisan onboarding form.</p>
+      </div>
+      <form class="work-actions service-form" data-service-form="new">
+        <label>
+          <span>Name</span>
+          <input name="name" type="text" placeholder="IT Technician" required />
+        </label>
+        <label>
+          <span>Description</span>
+          <input name="description" type="text" placeholder="Computers, networks, CCTV, printers" required />
+        </label>
+        <label>
+          <span>Skills</span>
+          <input name="skills" type="text" placeholder="Laptop repair, Network setup, CCTV support" />
+        </label>
+        <label>
+          <span>Sort order</span>
+          <input name="sort_order" type="number" min="0" value="100" />
+        </label>
+        <label>
+          <span>Status</span>
+          <select name="status">${serviceStatuses.map((status) => option(status, "active")).join("")}</select>
+        </label>
+        <button class="secondary-action" type="submit">Add service</button>
+      </form>
+    </article>
+    ${serviceCards}
+  `;
+}
+
+function renderServiceCard(service) {
+  return `
+    <article class="work-card service-card">
+      <div>
+        <div class="badge-row">
+          <span class="badge gold">${escapeHtml(service.status)}</span>
+          <span class="badge">Order ${Number(service.sort_order || 100)}</span>
+          <span class="badge">Updated ${formatDate(service.updated_at || service.created_at)}</span>
+        </div>
+        <h3>${escapeHtml(service.name)}</h3>
+        <p>${escapeHtml(service.description)}</p>
+        <div class="work-meta">
+          ${(service.skills || []).map((skill) => `<span class="badge">${escapeHtml(skill)}</span>`).join("")}
+        </div>
+        <p class="mini-note">Active services show publicly. Paused/removed services are hidden from new onboarding.</p>
+      </div>
+      <form class="work-actions service-form" data-service-form="${service.id}">
+        <label>
+          <span>Name</span>
+          <input name="name" type="text" value="${escapeAttribute(service.name)}" required />
+        </label>
+        <label>
+          <span>Description</span>
+          <input name="description" type="text" value="${escapeAttribute(service.description)}" required />
+        </label>
+        <label>
+          <span>Skills</span>
+          <input name="skills" type="text" value="${escapeAttribute((service.skills || []).join(", "))}" />
+        </label>
+        <label>
+          <span>Sort order</span>
+          <input name="sort_order" type="number" min="0" value="${Number(service.sort_order || 100)}" />
+        </label>
+        <label>
+          <span>Status</span>
+          <select name="status" data-service-status="${service.id}">
+            ${serviceStatuses.map((status) => option(status, service.status)).join("")}
+          </select>
+        </label>
+        <button class="secondary-action" type="submit">Save service</button>
+      </form>
     </article>
   `;
 }
@@ -975,6 +1098,72 @@ async function createReviewLink(quoteId) {
   renderDashboard();
 }
 
+async function saveServiceCategory(form) {
+  const serviceId = form.dataset.serviceForm;
+  const payload = {
+    name: form.elements.name.value.trim(),
+    description: form.elements.description.value.trim(),
+    skills: csvToList(form.elements.skills.value),
+    sort_order: Number(form.elements.sort_order.value || 100),
+    status: form.elements.status.value,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (!payload.name || !payload.description) {
+    setNote(dashboardNote, "Service name and description are required.", "error");
+    return;
+  }
+
+  setNote(dashboardNote, serviceId === "new" ? "Adding service..." : "Saving service...", "");
+
+  const query =
+    serviceId === "new"
+      ? supabaseClient.from("service_categories").insert(payload).select().single()
+      : supabaseClient.from("service_categories").update(payload).eq("id", serviceId).select().single();
+
+  const { data, error } = await query;
+
+  if (error) {
+    setNote(dashboardNote, error.message, "error");
+    return;
+  }
+
+  if (serviceId === "new") {
+    serviceCategories.push(data);
+    form.reset();
+    form.elements.sort_order.value = "100";
+    form.elements.status.value = "active";
+  } else {
+    const service = serviceCategories.find((item) => item.id === serviceId);
+    if (service) Object.assign(service, data);
+  }
+
+  serviceCategories.sort(compareServices);
+  setNote(dashboardNote, `${data.name} service saved. Active services appear on the public marketplace.`, "success");
+  renderDashboard();
+}
+
+async function updateServiceStatus(serviceId, status) {
+  const service = serviceCategories.find((item) => item.id === serviceId);
+  if (!service) return;
+
+  setNote(dashboardNote, "Updating service status...", "");
+  const { error } = await supabaseClient
+    .from("service_categories")
+    .update({ status, updated_at: new Date().toISOString() })
+    .eq("id", serviceId);
+
+  if (error) {
+    setNote(dashboardNote, error.message, "error");
+    return;
+  }
+
+  service.status = status;
+  service.updated_at = new Date().toISOString();
+  setNote(dashboardNote, `${service.name} is now ${status}.`, "success");
+  renderDashboard();
+}
+
 function setSignedOut() {
   authPanel.hidden = false;
   dashboardPanel.hidden = true;
@@ -1042,6 +1231,18 @@ function option(value, selected) {
   return `<option value="${value}"${value === selected ? " selected" : ""}>${titleCase(value)}</option>`;
 }
 
+function csvToList(value) {
+  return String(value || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .slice(0, 8);
+}
+
+function compareServices(a, b) {
+  return Number(a.sort_order || 100) - Number(b.sort_order || 100) || String(a.name).localeCompare(String(b.name));
+}
+
 function titleCase(value) {
   return value.replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
@@ -1060,4 +1261,8 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+function escapeAttribute(value) {
+  return escapeHtml(value);
 }

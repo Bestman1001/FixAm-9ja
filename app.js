@@ -7,16 +7,19 @@ const states = [
   { name: "Rivers", center: [4.8156, 7.0498], areas: ["Port Harcourt", "Obio-Akpor", "Bonny", "Eleme"] },
 ];
 
-const categories = [
-  ["Electrician", "Power, wiring, repairs"],
-  ["Plumber", "Leaks, fittings, water systems"],
-  ["Tailor", "Fashion, uniforms, alterations"],
-  ["Mechanic", "Vehicle repair and diagnostics"],
-  ["AC Technician", "Cooling, servicing, installation"],
-  ["Carpenter", "Furniture, fittings, woodwork"],
-  ["Painter", "Homes, offices, finishing"],
-  ["Solar Installer", "Inverters, panels, batteries"],
+const defaultServiceCategories = [
+  ["Electrician", "Power, wiring, repairs", ["House wiring", "Fault tracing", "Inverter setup"]],
+  ["Plumber", "Leaks, fittings, water systems", ["Leak repair", "Pipe fitting", "Pump setup"]],
+  ["Tailor", "Fashion, uniforms, alterations", ["Native wear", "Alterations", "Uniforms"]],
+  ["Mechanic", "Vehicle repair and diagnostics", ["Diagnostics", "Engine service", "Brake repair"]],
+  ["AC Technician", "Cooling, servicing, installation", ["AC servicing", "Gas refill", "Installation"]],
+  ["Carpenter", "Furniture, fittings, woodwork", ["Cabinets", "Doors", "Furniture repair"]],
+  ["Painter", "Homes, offices, finishing", ["Interior finish", "Exterior painting", "Wall prep"]],
+  ["Solar Installer", "Inverters, panels, batteries", ["Panel setup", "Battery wiring", "Load audit"]],
+  ["IT Technician", "Computers, networks, CCTV, printers", ["Laptop repair", "Network setup", "CCTV support"]],
 ];
+
+let categories = defaultServiceCategories.map(([name, description, skills]) => ({ name, description, skills }));
 
 const demoArtisans = [
   ["Lagos", "Ikeja", "Electrician", "Tunde Bright Electricals", 6.6018, 3.3515, 4.9, 22, "12 min", "Verified"],
@@ -68,15 +71,20 @@ let artisans = [...demoArtisans];
 let qoreIdRestoreTimer = null;
 
 function serviceSkills(category) {
+  const service = categories.find((item) => item.name.toLowerCase() === String(category).toLowerCase());
+  if (service?.skills?.length) return service.skills;
+
   const skills = {
     Electrician: ["House wiring", "Fault tracing", "Inverter setup"],
     "AC Technician": ["AC servicing", "Gas refill", "Installation"],
     Tailor: ["Native wear", "Alterations", "Uniforms"],
+    "Tailor/Fashion designer": ["Native wear", "Alterations", "Uniforms"],
     Plumber: ["Leak repair", "Pipe fitting", "Pump setup"],
     "Solar Installer": ["Panel setup", "Battery wiring", "Load audit"],
     Painter: ["Interior finish", "Exterior painting", "Wall prep"],
     Carpenter: ["Cabinets", "Doors", "Furniture repair"],
     Mechanic: ["Diagnostics", "Engine service", "Brake repair"],
+    "IT Technician": ["Laptop repair", "Network setup", "CCTV support"],
   };
   return skills[category] || ["Inspection", "Repairs", "Installation"];
 }
@@ -104,6 +112,7 @@ const stateFilter = document.querySelector("#stateFilter");
 const areaFilter = document.querySelector("#areaFilter");
 const serviceSearch = document.querySelector("#serviceSearch");
 const sortFilter = document.querySelector("#sortFilter");
+const categoryGrid = document.querySelector("#categoryGrid");
 const artisanList = document.querySelector("#artisanList");
 const resultCount = document.querySelector("#resultCount");
 const activeRegion = document.querySelector("#activeRegion");
@@ -116,6 +125,7 @@ const quoteArtisanText = document.querySelector("#quoteArtisanText");
 const quoteNote = document.querySelector("#quoteNote");
 const quoteSubmitButton = quoteForm.querySelector("button[type='submit']");
 const joinForm = document.querySelector("#joinForm");
+const joinTrade = document.querySelector("#joinTrade");
 const joinState = document.querySelector("#joinState");
 const joinArea = document.querySelector("#joinArea");
 const joinNote = document.querySelector("#joinNote");
@@ -148,17 +158,8 @@ document.querySelector("#stateGrid").innerHTML = states
   )
   .join("");
 
-document.querySelector("#categoryGrid").innerHTML = categories
-  .map(
-    ([name, text]) => `
-      <article class="category-card">
-        <span class="category-icon">${name.slice(0, 2)}</span>
-        <h3>${name}</h3>
-        <p>${text}</p>
-      </article>
-    `,
-  )
-  .join("");
+renderServiceCatalog();
+renderJoinTradeOptions();
 
 const map = L.map("map", { scrollWheelZoom: false }).setView(originByState[stateFilter.value], 11);
 L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -190,6 +191,48 @@ function syncJoinAreas() {
   const selected = states.find((state) => state.name === joinState.value);
   joinArea.innerHTML = "";
   selected.areas.forEach((area) => joinArea.add(new Option(area, area)));
+}
+
+function renderServiceCatalog() {
+  categoryGrid.innerHTML = categories
+    .map(
+      ({ name, description }) => `
+        <article class="category-card">
+          <span class="category-icon">${escapeHtml(name.slice(0, 2))}</span>
+          <h3>${escapeHtml(name)}</h3>
+          <p>${escapeHtml(description)}</p>
+        </article>
+      `,
+    )
+    .join("");
+}
+
+function renderJoinTradeOptions() {
+  const selectedTrade = joinTrade.value;
+  joinTrade.innerHTML = "";
+  categories.forEach(({ name }) => joinTrade.add(new Option(name, name)));
+  if (categories.some(({ name }) => name === selectedTrade)) joinTrade.value = selectedTrade;
+}
+
+async function loadServiceCategories() {
+  if (!supabaseClient) return;
+
+  const { data, error } = await supabaseClient
+    .from("service_categories")
+    .select("name, description, skills")
+    .eq("status", "active")
+    .order("sort_order", { ascending: true })
+    .order("name", { ascending: true });
+
+  if (error || !data?.length) return;
+
+  categories = data.map((service) => ({
+    name: service.name,
+    description: service.description,
+    skills: Array.isArray(service.skills) ? service.skills : [],
+  }));
+  renderServiceCatalog();
+  renderJoinTradeOptions();
 }
 
 function savedStateName() {
@@ -491,7 +534,7 @@ joinForm.addEventListener("submit", async (event) => {
     application_code: applicationCode,
     full_name: fullName,
     applicant_email: applicantEmail,
-    trade: document.querySelector("#joinTrade").value,
+    trade: joinTrade.value,
     state: joinState.value,
     area: joinArea.value,
     phone: normalizedPhone,
@@ -1175,6 +1218,7 @@ render();
 initializeDirectory();
 
 async function initializeDirectory() {
+  await loadServiceCategories();
   await Promise.all([loadRealArtisans(), loadTrustSignals()]);
   render();
 }

@@ -62,6 +62,70 @@ create policy "Users can upsert own profile"
   using (user_id = auth.uid())
   with check (user_id = auth.uid());
 
+create table if not exists public.admin_profiles (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  email text not null,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.service_categories (
+  id uuid primary key default gen_random_uuid(),
+  name text unique not null,
+  description text not null,
+  skills text[] not null default '{}',
+  status text not null default 'active' check (status in ('active', 'paused', 'removed')),
+  sort_order integer not null default 100,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists service_categories_status_idx
+  on public.service_categories (status);
+
+create index if not exists service_categories_sort_idx
+  on public.service_categories (sort_order, name);
+
+insert into public.service_categories (name, description, skills, sort_order)
+values
+  ('Electrician', 'Power, wiring, repairs', array['House wiring', 'Fault tracing', 'Inverter setup'], 10),
+  ('Plumber', 'Leaks, fittings, water systems', array['Leak repair', 'Pipe fitting', 'Pump setup'], 20),
+  ('Tailor', 'Fashion, uniforms, alterations', array['Native wear', 'Alterations', 'Uniforms'], 30),
+  ('Mechanic', 'Vehicle repair and diagnostics', array['Diagnostics', 'Engine service', 'Brake repair'], 40),
+  ('AC Technician', 'Cooling, servicing, installation', array['AC servicing', 'Gas refill', 'Installation'], 50),
+  ('Carpenter', 'Furniture, fittings, woodwork', array['Cabinets', 'Doors', 'Furniture repair'], 60),
+  ('Painter', 'Homes, offices, finishing', array['Interior finish', 'Exterior painting', 'Wall prep'], 70),
+  ('Solar Installer', 'Inverters, panels, batteries', array['Panel setup', 'Battery wiring', 'Load audit'], 80),
+  ('IT Technician', 'Computers, networks, CCTV, printers', array['Laptop repair', 'Network setup', 'CCTV support'], 90)
+on conflict (name) do update
+set description = excluded.description,
+    skills = excluded.skills,
+    sort_order = excluded.sort_order,
+    updated_at = now();
+
+alter table public.service_categories enable row level security;
+
+drop policy if exists "Anyone can read active service categories" on public.service_categories;
+drop policy if exists "Admins can manage service categories" on public.service_categories;
+
+create policy "Anyone can read active service categories"
+  on public.service_categories
+  for select
+  to anon, authenticated
+  using (status = 'active');
+
+create policy "Admins can manage service categories"
+  on public.service_categories
+  for all
+  to authenticated
+  using (exists (
+    select 1 from public.admin_profiles
+    where admin_profiles.user_id = auth.uid()
+  ))
+  with check (exists (
+    select 1 from public.admin_profiles
+    where admin_profiles.user_id = auth.uid()
+  ));
+
 create table if not exists public.quote_requests (
   id uuid primary key default gen_random_uuid(),
   request_code text unique not null,
