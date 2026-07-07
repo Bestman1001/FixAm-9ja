@@ -49,6 +49,7 @@ const demoArtisans = [
   jobs,
   response,
   plan,
+  subscriptionStatus: "active",
   initials: name
     .split(" ")
     .slice(0, 2)
@@ -85,7 +86,10 @@ function portfolioFor(category) {
 }
 
 const originByState = Object.fromEntries(states.map((state) => [state.name, state.center]));
-let activeOrigin = originByState.Lagos;
+const defaultStateName = "Lagos";
+const stateStorageKey = "fixam9ja.selectedState";
+const foundingLaunchFree = true;
+let activeOrigin = originByState[defaultStateName];
 let markers = [];
 let reviewStatsByArtisanId = new Map();
 let qualityByArtisanId = new Map();
@@ -129,6 +133,9 @@ states.forEach((state) => {
   joinState.add(new Option(state.name, state.name));
 });
 
+stateFilter.value = savedStateName();
+joinState.value = stateFilter.value;
+
 document.querySelector("#stateGrid").innerHTML = states
   .map(
     (state) => `
@@ -153,7 +160,7 @@ document.querySelector("#categoryGrid").innerHTML = categories
   )
   .join("");
 
-const map = L.map("map", { scrollWheelZoom: false }).setView(states[0].center, 11);
+const map = L.map("map", { scrollWheelZoom: false }).setView(originByState[stateFilter.value], 11);
 L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
   maxZoom: 19,
   attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
@@ -176,12 +183,31 @@ function syncAreas() {
   areaFilter.add(new Option("All areas", "All"));
   selected.areas.forEach((area) => areaFilter.add(new Option(area, area)));
   activeOrigin = selected.center;
+  saveStateName(selected.name);
 }
 
 function syncJoinAreas() {
   const selected = states.find((state) => state.name === joinState.value);
   joinArea.innerHTML = "";
   selected.areas.forEach((area) => joinArea.add(new Option(area, area)));
+}
+
+function savedStateName() {
+  try {
+    const saved = localStorage.getItem(stateStorageKey);
+    return states.some((state) => state.name === saved) ? saved : defaultStateName;
+  } catch {
+    return defaultStateName;
+  }
+}
+
+function saveStateName(stateName) {
+  if (!states.some((state) => state.name === stateName)) return;
+  try {
+    localStorage.setItem(stateStorageKey, stateName);
+  } catch {
+    // Some browsers block storage in strict privacy modes. The page still works for the current visit.
+  }
 }
 
 function filteredArtisans() {
@@ -227,7 +253,7 @@ function renderCards(matches) {
             <div class="badge-row">
               <span class="badge ${artisan.plan === "Pro" ? "gold" : ""}">FixAm ${artisan.plan}</span>
               <span class="badge gold">NIN verified</span>
-              <span class="badge">Subscription active</span>
+              <span class="badge">${subscriptionAccessLabel(artisan.subscriptionStatus)}</span>
               ${qualityBadge(artisan)}
               <span class="badge">${artisan.distance.toFixed(1)} miles away</span>
               <span class="badge">${artisan.jobs} jobs</span>
@@ -287,7 +313,10 @@ stateFilter.addEventListener("change", () => {
   render();
 });
 
-joinState.addEventListener("change", syncJoinAreas);
+joinState.addEventListener("change", () => {
+  saveStateName(joinState.value);
+  syncJoinAreas();
+});
 areaFilter.addEventListener("change", render);
 serviceSearch.addEventListener("input", render);
 sortFilter.addEventListener("change", render);
@@ -295,7 +324,9 @@ sortFilter.addEventListener("change", render);
 document.querySelectorAll("[data-state]").forEach((button) => {
   button.addEventListener("click", () => {
     stateFilter.value = button.dataset.state;
+    joinState.value = button.dataset.state;
     syncAreas();
+    syncJoinAreas();
     render();
     document.querySelector("#marketplace").scrollIntoView({ behavior: "smooth" });
   });
@@ -550,17 +581,20 @@ joinForm.addEventListener("submit", async (event) => {
         mediaResult.count === 1 ? "" : "s"
       }. ${verificationStatusMessage(verificationResult)}`;
   const finalType = mediaResult.error || verificationResult.status === "failed" ? "error" : "success";
-  setJoinStatus(finalMessage, finalType, {
+  const nextAction = {
     url: verificationResult.verification_url,
     sdkSessionToken: verificationResult.sdk_session_token,
     reference: verificationResult.reference || applicationCode,
     applicationCode,
     plan: payload.subscription_plan,
-    amount: payload.subscription_amount,
     fullName,
     email: applicantEmail,
     phone: payload.phone,
-  });
+  };
+  if (!foundingLaunchFree) {
+    nextAction.amount = payload.subscription_amount;
+  }
+  setJoinStatus(finalMessage, finalType, nextAction);
   joinSubmitButton.textContent = "Application sent";
   joinForm.reset();
   syncJoinAreas();
@@ -594,14 +628,18 @@ async function verifyNinForApplication({ applicationCode, applicantEmail, fullNa
 
 function verificationStatusMessage(result) {
   if (result.status === "verified") {
-    return "Identity verification passed. We will activate visibility after launch approval/subscription.";
+    return foundingLaunchFree
+      ? "Identity verification passed. Founding artisans can be listed during the free launch period."
+      : "Identity verification passed. We will activate visibility after launch approval/subscription.";
   }
 
   if (result.status === "failed") {
     return `${result.message || "Identity verification could not be completed."} FixAm 9ja will review it manually.`;
   }
 
-  return `${result.message || "Identity verification is pending."} Next step: subscription activation before listing.`;
+  return foundingLaunchFree
+    ? `${result.message || "Identity verification is pending."} Once verified, your founding listing can go live during the free launch period.`
+    : `${result.message || "Identity verification is pending."} Next step: subscription activation before listing.`;
 }
 
 async function loadTrustSignals() {
@@ -646,7 +684,7 @@ async function loadRealArtisans() {
     )
     .eq("profile_status", "active")
     .eq("verification_status", "verified")
-    .eq("subscription_status", "active")
+    .in("subscription_status", ["active", "founding", "free_trial"])
     .order("business_name");
 
   if (error) {
@@ -668,6 +706,7 @@ async function loadRealArtisans() {
     response: artisan.response_time || "30 min",
     plan: artisan.plan || "Basic",
     subscription: artisan.subscription_plan || "monthly",
+    subscriptionStatus: artisan.subscription_status || "active",
     initials: artisan.business_name
       .split(" ")
       .slice(0, 2)
@@ -682,11 +721,18 @@ async function loadRealArtisans() {
     completed: Number(artisan.completed_jobs || artisan.jobs || 0),
     verification: artisan.verification_checks?.length
       ? artisan.verification_checks
-      : ["NIN verified", "Subscription active"],
+      : ["NIN verified", subscriptionAccessLabel(artisan.subscription_status)],
     portfolio: artisan.portfolio_items?.length ? artisan.portfolio_items : portfolioFor(artisan.category),
   }));
 
   syncAreas();
+}
+
+function subscriptionAccessLabel(status) {
+  if (status === "founding") return "Founding launch access";
+  if (status === "free_trial") return "Free launch access";
+  if (status === "active") return "Subscription active";
+  return "Launch access pending";
 }
 
 function buildReviewStats(reviews) {

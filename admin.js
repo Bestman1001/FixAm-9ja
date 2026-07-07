@@ -10,7 +10,7 @@ const artisanProfileStatuses = ["draft", "active", "paused", "suspended", "remov
 const artisanPlans = ["Basic", "Verified", "Pro", "Business"];
 const verificationStatuses = ["pending", "reviewed", "verified"];
 const identityVerificationStatuses = ["pending", "verified", "failed"];
-const subscriptionStatuses = ["pending", "active", "past_due", "cancelled", "expired"];
+const subscriptionStatuses = ["pending", "founding", "free_trial", "active", "past_due", "cancelled", "expired"];
 const reviewVisibilityStatuses = ["public", "flagged", "hidden"];
 const artisanStandingStatuses = ["active", "warning", "suspended", "removed"];
 const states = ["Lagos", "Abuja/FCT", "Edo", "Ogun", "Delta", "Rivers"];
@@ -408,7 +408,7 @@ function renderSubscriptionCard(request) {
             ${subscriptionStatuses.map((status) => option(status, request.status)).join("")}
           </select>
         </label>
-        <p class="mini-note">Confirm after payment. Active subscriptions unlock public listing when identity is verified.</p>
+        <p class="mini-note">Founding/free trial/active access can unlock public listing when identity is verified.</p>
       </div>
     </article>
   `;
@@ -697,7 +697,7 @@ async function updateSubscriptionRequest(requestId, status) {
     status,
     updated_at: new Date().toISOString(),
   };
-  if (status === "active" && !request.payment_reference) {
+  if (["active", "founding", "free_trial"].includes(status) && !request.payment_reference) {
     payload.payment_reference = request.request_code;
   }
 
@@ -734,9 +734,10 @@ async function updateSubscriptionRequest(requestId, status) {
       updated_at: new Date().toISOString(),
     };
 
-    if (status === "active") {
+    if (["active", "founding", "free_trial"].includes(status)) {
       artisanPayload.subscription_started_at = new Date().toISOString();
-      artisanPayload.subscription_expires_at = subscriptionExpiryForPlan(request.plan);
+      artisanPayload.subscription_expires_at =
+        status === "active" ? subscriptionExpiryForPlan(request.plan) : foundingAccessExpiry();
     }
 
     const query = supabaseClient.from("artisans").update(artisanPayload);
@@ -747,8 +748,20 @@ async function updateSubscriptionRequest(requestId, status) {
       .forEach((artisan) => Object.assign(artisan, artisanPayload));
   }
 
-  setNote(dashboardNote, status === "active" ? "Subscription activated." : "Subscription status updated.", "success");
+  setNote(
+    dashboardNote,
+    ["active", "founding", "free_trial"].includes(status)
+      ? "Marketplace access activated."
+      : "Subscription status updated.",
+    "success",
+  );
   renderDashboard();
+}
+
+function foundingAccessExpiry() {
+  const expiry = new Date();
+  expiry.setMonth(expiry.getMonth() + 3);
+  return expiry.toISOString();
 }
 
 function applicationIdForCode(applicationCode) {
@@ -791,7 +804,7 @@ async function createArtisanFromApplication(applicationId) {
     verification_status: "pending",
     identity_verification_status: "pending",
     nin_last4: application.nin_last4 || null,
-    subscription_status: "pending",
+    subscription_status: "founding",
     subscription_plan: normalizeSubscriptionPlan(application.preferred_plan),
     subscription_amount: Number(application.subscription_amount || subscriptionAmountForPlan(application.preferred_plan)),
     bio: application.work_summary,
@@ -799,7 +812,7 @@ async function createArtisanFromApplication(applicationId) {
     availability: "Taking scheduled jobs",
     service_radius: 10,
     response_time: "30 min",
-    verification_checks: ["Application reviewed", "NIN consent captured", "Payment pending"],
+    verification_checks: ["Application reviewed", "NIN consent captured", "Founding launch access"],
     portfolio_items: [`${application.trade} work sample`, `${application.area} customer job`],
   };
 
@@ -821,7 +834,7 @@ async function createArtisanFromApplication(applicationId) {
     dashboardNote,
     statusResult.error
       ? `${data.business_name} profile was created, but the application status could not be updated: ${statusResult.error.message}`
-      : `${data.business_name} profile created as draft. Activate only after NIN verification and payment.`,
+      : `${data.business_name} profile created as draft with founding launch access. Activate after identity verification.`,
     statusResult.error ? "error" : "success",
   );
   renderDashboard();
@@ -843,7 +856,7 @@ async function updateArtisanField(artisanId, field, value) {
     payload.verification_status = "verified";
     payload.identity_verified_at = new Date().toISOString();
   }
-  if (field === "subscription_status" && value === "active") {
+  if (field === "subscription_status" && ["active", "founding", "free_trial"].includes(value)) {
     payload.subscription_started_at = new Date().toISOString();
   }
   const { error } = await supabaseClient.from("artisans").update(payload).eq("id", artisanId);

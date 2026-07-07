@@ -316,6 +316,13 @@ create table if not exists public.subscription_requests (
   updated_at timestamptz not null default now()
 );
 
+alter table public.subscription_requests
+  drop constraint if exists subscription_requests_status_check;
+
+alter table public.subscription_requests
+  add constraint subscription_requests_status_check
+  check (status in ('pending', 'founding', 'free_trial', 'active', 'past_due', 'cancelled', 'expired'));
+
 create index if not exists subscription_requests_created_at_idx
   on public.subscription_requests (created_at desc);
 
@@ -389,7 +396,7 @@ create policy "Anyone can read active artisans"
     profile_status = 'active'
     and verification_status = 'verified'
     and identity_verification_status = 'verified'
-    and subscription_status = 'active'
+    and subscription_status in ('active', 'founding', 'free_trial')
   );
 
 create policy "Admins can manage artisans"

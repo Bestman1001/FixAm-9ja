@@ -118,10 +118,10 @@ Deno.serve(async (req) => {
       application_code: application.application_code,
       status,
       artisan_id: artisan?.id || null,
-      public_listing: artisan?.subscription_status === "active",
+      public_listing: ["active", "founding", "free_trial"].includes(artisan?.subscription_status || ""),
       message:
         status === "verified"
-          ? "Artisan identity verified. Profile is ready for subscription activation."
+          ? "Artisan identity verified. Founding launch listing is ready."
           : `Artisan identity verification is ${status}.`,
     });
   } catch (error) {
@@ -178,7 +178,12 @@ async function upsertVerifiedArtisan(
   const coords = coordinatesFor(application.state, application.area);
   const subscriptionPlan = normalizeSubscriptionPlan(application.preferred_plan || application.subscription_plan);
   const subscriptionAmount = Number(application.subscription_amount || subscriptionAmountForPlan(subscriptionPlan));
-  const checks = ["QoreID liveness verified", "Virtual NIN verified", "Subscription pending"];
+  const launchAccess = application.subscription_status === "active" ? "active" : "founding";
+  const checks = [
+    "QoreID liveness verified",
+    "NIN verified",
+    launchAccess === "founding" ? "Founding launch access" : "Subscription active",
+  ];
 
   const payload = {
     application_id: application.id,
@@ -198,7 +203,7 @@ async function upsertVerifiedArtisan(
     identity_verification_reference: reference,
     identity_verified_at: now,
     nin_last4: application.nin_last4 || null,
-    subscription_status: application.subscription_status || "pending",
+    subscription_status: launchAccess,
     subscription_plan: subscriptionPlan,
     subscription_amount: subscriptionAmount,
     bio: application.work_summary,
