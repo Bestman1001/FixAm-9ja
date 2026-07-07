@@ -96,9 +96,12 @@ function portfolioFor(category) {
 const originByState = Object.fromEntries(states.map((state) => [state.name, state.center]));
 const defaultStateName = "Lagos";
 const stateStorageKey = "fixam9ja.selectedState";
+const areaStorageKey = "fixam9ja.selectedArea";
 const foundingLaunchFree = true;
 let activeOrigin = originByState[defaultStateName];
+let activeOriginLabel = null;
 let markers = [];
+let userMarker = null;
 let reviewStatsByArtisanId = new Map();
 let qualityByArtisanId = new Map();
 const artisanIcon = L.divIcon({
@@ -180,11 +183,15 @@ function milesBetween([lat1, lon1], [lat2, lon2]) {
 
 function syncAreas() {
   const selected = states.find((state) => state.name === stateFilter.value);
+  const selectedArea = areaFilter.value || savedAreaName(selected.name);
   areaFilter.innerHTML = "";
   areaFilter.add(new Option("All areas", "All"));
   selected.areas.forEach((area) => areaFilter.add(new Option(area, area)));
+  areaFilter.value = selected.areas.includes(selectedArea) ? selectedArea : "All";
   activeOrigin = selected.center;
+  activeOriginLabel = null;
   saveStateName(selected.name);
+  saveAreaName(areaFilter.value);
 }
 
 function syncJoinAreas() {
@@ -244,10 +251,28 @@ function savedStateName() {
   }
 }
 
+function savedAreaName(stateName) {
+  try {
+    const saved = localStorage.getItem(areaStorageKey);
+    const state = states.find((item) => item.name === stateName);
+    return state?.areas.includes(saved) ? saved : "All";
+  } catch {
+    return "All";
+  }
+}
+
 function saveStateName(stateName) {
   if (!states.some((state) => state.name === stateName)) return;
   try {
     localStorage.setItem(stateStorageKey, stateName);
+  } catch {
+    // Some browsers block storage in strict privacy modes. The page still works for the current visit.
+  }
+}
+
+function saveAreaName(areaName) {
+  try {
+    localStorage.setItem(areaStorageKey, areaName || "All");
   } catch {
     // Some browsers block storage in strict privacy modes. The page still works for the current visit.
   }
@@ -324,6 +349,22 @@ function renderMap(matches) {
       ),
   );
 
+  if (activeOriginLabel === "your current location") {
+    if (userMarker) userMarker.remove();
+    userMarker = L.circleMarker(activeOrigin, {
+      radius: 9,
+      color: "#ffffff",
+      weight: 3,
+      fillColor: "#0f7d66",
+      fillOpacity: 1,
+    })
+      .addTo(map)
+      .bindPopup("Your current location");
+  } else if (userMarker) {
+    userMarker.remove();
+    userMarker = null;
+  }
+
   const selectedState = states.find((state) => state.name === stateFilter.value);
   map.invalidateSize();
   if (markers.length === 1) {
@@ -336,7 +377,7 @@ function renderMap(matches) {
   }
 
   mapStatus.textContent = `Showing ${matches.length} verified artisan${matches.length === 1 ? "" : "s"} near ${
-    stateFilter.value
+    activeOriginLabel || stateFilter.value
   }`;
 }
 
@@ -360,7 +401,10 @@ joinState.addEventListener("change", () => {
   saveStateName(joinState.value);
   syncJoinAreas();
 });
-areaFilter.addEventListener("change", render);
+areaFilter.addEventListener("change", () => {
+  saveAreaName(areaFilter.value);
+  render();
+});
 serviceSearch.addEventListener("input", render);
 sortFilter.addEventListener("change", render);
 
@@ -386,8 +430,30 @@ document.querySelector("[data-focus-search]").addEventListener("click", () => {
 });
 
 document.querySelector("#locateButton").addEventListener("click", () => {
-  activeOrigin = originByState[stateFilter.value];
-  render();
+  if (!navigator.geolocation) {
+    activeOrigin = originByState[stateFilter.value];
+    activeOriginLabel = null;
+    render();
+    mapStatus.textContent = "Location access is not available in this browser. Showing selected state instead.";
+    return;
+  }
+
+  mapStatus.textContent = "Finding your current location...";
+  navigator.geolocation.getCurrentPosition(
+    ({ coords }) => {
+      activeOrigin = [coords.latitude, coords.longitude];
+      activeOriginLabel = "your current location";
+      render();
+      map.setView(activeOrigin, 13);
+    },
+    () => {
+      activeOrigin = originByState[stateFilter.value];
+      activeOriginLabel = null;
+      render();
+      mapStatus.textContent = "Location permission was not granted. Showing selected state instead.";
+    },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
+  );
 });
 
 artisanList.addEventListener("click", (event) => {
