@@ -301,7 +301,7 @@ create table if not exists public.subscription_requests (
   id uuid primary key default gen_random_uuid(),
   request_code text unique not null,
   application_code text references public.artisan_applications(application_code) on delete set null,
-  artisan_id uuid references public.artisans(id) on delete set null,
+  artisan_id integer references public.artisans(id) on delete set null,
   applicant_user_id uuid references auth.users(id) on delete set null,
   applicant_email text,
   applicant_name text,
