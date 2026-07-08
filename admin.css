@@ -71,14 +71,14 @@ button:disabled {
 }
 
 .brand-mark {
-  display: grid;
+  display: block;
   width: 42px;
   height: 42px;
-  place-items: center;
   border-radius: 8px;
-  background: linear-gradient(135deg, #0a5b51, #127f65);
-  color: #f7fffc;
-  font-weight: 900;
+  object-fit: cover;
+  object-position: center;
+  background: #fff;
+  box-shadow: 0 10px 28px rgba(7, 238, 168, 0.16);
 }
 
 .brand strong,

@@ -218,6 +218,32 @@ function milesBetween([lat1, lon1], [lat2, lon2]) {
   return radius * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+function areaOrigin(stateName, areaName) {
+  const state = states.find((item) => item.name === stateName);
+  if (!state || !areaName || areaName === "All") return state?.center || originByState[defaultStateName];
+
+  const areaArtisans = artisans.filter(
+    (artisan) => artisan.state === stateName && artisan.area === areaName && Number.isFinite(artisan.lat) && Number.isFinite(artisan.lng),
+  );
+
+  if (areaArtisans.length) {
+    const totals = areaArtisans.reduce(
+      (sum, artisan) => [sum[0] + artisan.lat, sum[1] + artisan.lng],
+      [0, 0],
+    );
+    return [totals[0] / areaArtisans.length, totals[1] / areaArtisans.length];
+  }
+
+  const areaIndex = state.areas.indexOf(areaName);
+  const angle = ((areaIndex >= 0 ? areaIndex : 0) / Math.max(state.areas.length, 1)) * Math.PI * 2;
+  return [state.center[0] + Math.sin(angle) * 0.08, state.center[1] + Math.cos(angle) * 0.08];
+}
+
+function setSelectedOrigin() {
+  activeOrigin = areaOrigin(stateFilter.value, areaFilter.value);
+  activeOriginLabel = areaFilter.value !== "All" ? `${areaFilter.value}, ${stateFilter.value}` : null;
+}
+
 function syncAreas() {
   const selected = states.find((state) => state.name === stateFilter.value);
   const selectedArea = areaFilter.value || savedAreaName(selected.name);
@@ -225,8 +251,7 @@ function syncAreas() {
   areaFilter.add(new Option("All areas", "All"));
   selected.areas.forEach((area) => areaFilter.add(new Option(area, area)));
   areaFilter.value = selected.areas.includes(selectedArea) ? selectedArea : "All";
-  activeOrigin = selected.center;
-  activeOriginLabel = null;
+  setSelectedOrigin();
   saveStateName(selected.name);
   saveAreaName(areaFilter.value);
 }
@@ -404,7 +429,9 @@ function renderMap(matches) {
 
   const selectedState = states.find((state) => state.name === stateFilter.value);
   map.invalidateSize();
-  if (markers.length === 1) {
+  if (areaFilter.value !== "All") {
+    map.setView(activeOrigin, markers.length ? 13 : 12);
+  } else if (markers.length === 1) {
     map.setView([matches[0].lat, matches[0].lng], 12);
   } else if (markers.length) {
     const group = L.featureGroup(markers);
@@ -440,6 +467,7 @@ joinState.addEventListener("change", () => {
 });
 areaFilter.addEventListener("change", () => {
   saveAreaName(areaFilter.value);
+  setSelectedOrigin();
   render();
 });
 serviceSearch.addEventListener("input", render);
