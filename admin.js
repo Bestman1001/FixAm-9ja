@@ -1165,10 +1165,27 @@ async function updateServiceStatus(serviceId, status) {
 }
 
 function setSignedOut() {
+  if (shouldRedirectToAdminLogin()) {
+    window.location.assign(adminLoginUrl());
+    return;
+  }
+
   authPanel.hidden = false;
   dashboardPanel.hidden = true;
   sessionEmail.textContent = "Signed out";
   signOutButton.hidden = true;
+}
+
+function shouldRedirectToAdminLogin() {
+  return window.location.protocol !== "file:" && !window.location.pathname.endsWith("admin-login.html");
+}
+
+function adminLoginUrl() {
+  if (window.location.pathname.endsWith(".html")) {
+    return new URL("admin-login.html", window.location.href).toString();
+  }
+
+  return `${window.location.origin}/admin/login`;
 }
 
 function setNote(element, message, type) {

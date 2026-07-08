@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FixAm 9ja Admin Login</title>
+    <meta name="robots" content="noindex" />
+    <link rel="stylesheet" href="admin-login.css?v=admin-login-v1" />
+  </head>
+  <body>
+    <main class="login-shell">
+      <section class="login-copy" aria-labelledby="adminLoginTitle">
+        <a class="brand" href="/" aria-label="FixAm 9ja home">
+          <span class="brand-mark">F9</span>
+          <span>
+            <strong>FixAm 9ja</strong>
+            <small>Operations access</small>
+          </span>
+        </a>
+
+        <div>
+          <p class="eyebrow">Admin portal</p>
+          <h1 id="adminLoginTitle">Secure access for the FixAm request desk.</h1>
+          <p>
+            Approved operators can review quote requests, artisan onboarding, service categories,
+            subscription activity, and trust signals from one protected workspace.
+          </p>
+        </div>
+
+        <div class="trust-strip" aria-label="Admin access rules">
+          <span>Private login</span>
+          <span>Admin profile required</span>
+          <span>No customer access</span>
+        </div>
+      </section>
+
+      <section class="login-card" aria-label="Admin sign in form">
+        <div class="card-heading">
+          <p class="eyebrow">Sign in</p>
+          <h2>Continue to admin</h2>
+          <p>Use the email that was added to `admin_profiles` in Supabase.</p>
+        </div>
+
+        <form class="login-form" id="adminLoginForm">
+          <label>
+            <span>Email address</span>
+            <input id="adminLoginEmail" type="email" placeholder="admin@fixam9ja.com" autocomplete="email" required />
+          </label>
+
+          <label>
+            <span>Password</span>
+            <input
+              id="adminLoginPassword"
+              type="password"
+              placeholder="Enter password"
+              autocomplete="current-password"
+            />
+          </label>
+
+          <button class="primary-action" type="submit">Sign in to dashboard</button>
+          <button class="secondary-action" type="button" id="adminMagicLinkButton">Email me a secure link</button>
+          <p class="form-note" id="adminLoginNote">Password sign in is fastest. Magic links may need Supabase redirect approval.</p>
+        </form>
+      </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js?v=phase5"></script>
+    <script src="admin-login.js?v=admin-login-v1"></script>
+  </body>
+</html>
