@@ -1,6 +1,6 @@
 # FixAm 9ja
 
-FixAm 9ja is a map-first Nigerian artisan marketplace by ObaX for finding trusted skilled workers by state, area, trade, rating, response time, and distance.
+FixAm 9ja is a map-first Nigerian artisan marketplace operated by Omo-Abebe Integrated Services Limited (OAISL), RC 8507484, for finding trusted skilled workers by state, area, trade, rating, response time, and distance.
 
 ## Launch Coverage
 
