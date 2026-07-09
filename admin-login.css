@@ -57,32 +57,37 @@ button {
 .brand {
   display: inline-flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   color: var(--ink);
   text-decoration: none;
 }
 
 .brand-full-logo {
   display: block;
-  width: clamp(174px, 18vw, 230px);
-  height: 52px;
-  border-radius: 10px;
+  width: clamp(92px, 8vw, 118px);
+  height: 58px;
+  border-radius: 0;
   object-fit: contain;
   object-position: left center;
-  background: #ffffff;
-  box-shadow: 0 18px 34px rgba(0, 0, 0, 0.24);
 }
 
-.brand-operator {
-  display: inline-flex;
-  align-items: center;
-  min-height: 34px;
-  padding-left: 12px;
-  border-left: 1px solid rgba(159, 208, 195, 0.28);
+.brand-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.15;
+}
+
+.brand-copy strong {
+  color: var(--ink);
+  font-size: 1rem;
+  font-weight: 950;
+}
+
+.brand-copy small {
   color: var(--muted);
-  font-size: 0.76rem;
-  font-weight: 750;
-  line-height: 1.25;
+  font-size: 0.8rem;
+  font-weight: 650;
   white-space: nowrap;
 }
 
@@ -234,13 +239,16 @@ input:focus {
   }
 
   .brand-full-logo {
-    width: 168px;
-    height: 48px;
+    width: 86px;
+    height: 52px;
   }
 
-  .brand-operator {
-    padding-left: 10px;
-    font-size: 0.68rem;
+  .brand-copy strong {
+    font-size: 0.95rem;
+  }
+
+  .brand-copy small {
+    font-size: 0.74rem;
     white-space: normal;
   }
 
