@@ -23,6 +23,46 @@ const stateCoordinates = {
   Delta: [5.5325, 5.8987],
   Rivers: [4.8156, 7.0498],
 };
+const areaCoordinates = {
+  Lagos: {
+    Ikeja: [6.6018, 3.3515],
+    Lekki: [6.4698, 3.5852],
+    Yaba: [6.5167, 3.3833],
+    Surulere: [6.5004, 3.3555],
+    Ajah: [6.4698, 3.5675],
+  },
+  "Abuja/FCT": {
+    Wuse: [9.0747, 7.4702],
+    Garki: [9.0333, 7.4833],
+    Maitama: [9.0907, 7.4951],
+    Gwarinpa: [9.1099, 7.4042],
+    Lugbe: [8.994, 7.3675],
+  },
+  Edo: {
+    "Benin City": [6.335, 5.6037],
+    Ekpoma: [6.743, 6.1403],
+    Auchi: [7.0676, 6.2636],
+    Uromi: [6.7, 6.3333],
+  },
+  Ogun: {
+    Abeokuta: [7.1475, 3.3619],
+    "Sango Ota": [6.6924, 3.2365],
+    "Ijebu Ode": [6.8161, 3.9159],
+    Sagamu: [6.8322, 3.6319],
+  },
+  Delta: {
+    Warri: [5.5167, 5.75],
+    Asaba: [6.2006, 6.7338],
+    Sapele: [5.894, 5.6767],
+    Ughelli: [5.4896, 6.0041],
+  },
+  Rivers: {
+    "Port Harcourt": [4.8156, 7.0498],
+    "Obio-Akpor": [4.8675, 7.0176],
+    Bonny: [4.4522, 7.1681],
+    Eleme: [4.7801, 7.1174],
+  },
+};
 
 const authPanel = document.querySelector("#authPanel");
 const dashboardPanel = document.querySelector("#dashboardPanel");
@@ -1196,6 +1236,14 @@ function setNote(element, message, type) {
 }
 
 function coordinatesFor(state, area) {
+  const exactArea = areaCoordinates[state]?.[area];
+  if (exactArea) {
+    return {
+      lat: exactArea[0],
+      lng: exactArea[1],
+    };
+  }
+
   const [baseLat, baseLng] = stateCoordinates[state] || stateCoordinates.Lagos;
   const hash = String(area || state)
     .split("")
