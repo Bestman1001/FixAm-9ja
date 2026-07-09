@@ -64,13 +64,13 @@ button {
 
 .brand-mark {
   display: block;
-  width: 48px;
+  width: clamp(128px, 12vw, 170px);
   height: 48px;
-  border-radius: 8px;
-  object-fit: cover;
+  border-radius: 0;
+  object-fit: contain;
   object-position: center;
-  background: #fff;
-  box-shadow: 0 16px 34px rgba(10, 91, 81, 0.24);
+  background: transparent;
+  box-shadow: none;
 }
 
 .brand strong,

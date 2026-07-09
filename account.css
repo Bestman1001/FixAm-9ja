@@ -74,13 +74,13 @@ button:disabled {
 
 .brand-mark {
   display: block;
-  width: 42px;
-  height: 42px;
-  border-radius: 8px;
-  object-fit: cover;
+  width: clamp(118px, 10vw, 158px);
+  height: 48px;
+  border-radius: 0;
+  object-fit: contain;
   object-position: center;
-  background: #fff;
-  box-shadow: 0 10px 28px rgba(6, 76, 72, 0.18);
+  background: transparent;
+  box-shadow: none;
 }
 
 .brand strong,
