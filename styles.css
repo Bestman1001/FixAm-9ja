@@ -85,30 +85,33 @@ button:disabled {
   display: inline-flex;
   align-items: center;
   gap: 12px;
-  min-width: 230px;
+  min-width: 340px;
   color: var(--ink);
   text-decoration: none;
 }
 
-.brand-mark {
+.brand-full-logo {
   display: block;
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
+  width: clamp(172px, 15vw, 220px);
+  height: 50px;
+  border-radius: 10px;
   object-fit: contain;
-  object-position: center;
+  object-position: left center;
   background: #ffffff;
   box-shadow: 0 12px 26px rgba(15, 47, 43, 0.12);
 }
 
-.brand strong,
-.brand small {
-  display: block;
-}
-
-.brand small {
+.brand-operator {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding-left: 12px;
+  border-left: 1px solid var(--line);
   color: var(--muted);
-  font-size: 0.78rem;
+  font-size: 0.76rem;
+  font-weight: 750;
+  line-height: 1.25;
+  white-space: nowrap;
 }
 
 .nav-links {
@@ -962,6 +965,10 @@ footer {
     flex-wrap: wrap;
   }
 
+  .brand {
+    min-width: 0;
+  }
+
   .nav-links {
     order: 3;
     width: 100%;
@@ -1005,6 +1012,21 @@ footer {
 }
 
 @media (max-width: 620px) {
+  .brand {
+    width: 100%;
+  }
+
+  .brand-full-logo {
+    width: 154px;
+    height: 44px;
+  }
+
+  .brand-operator {
+    padding-left: 10px;
+    font-size: 0.68rem;
+    white-space: normal;
+  }
+
   .topbar .primary-action {
     width: 100%;
   }
