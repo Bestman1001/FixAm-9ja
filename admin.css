@@ -371,7 +371,12 @@ select:focus {
     min-width: 0;
   }
 
-  .admin-topbar,
+  .admin-topbar {
+    position: static;
+    gap: 10px;
+    padding: 10px 12px 12px;
+  }
+
   .dashboard-heading {
     align-items: stretch;
     flex-direction: column;
@@ -388,6 +393,15 @@ select:focus {
   .work-card {
     grid-template-columns: 1fr;
   }
+
+  .admin-shell {
+    padding: 18px 12px 34px;
+  }
+
+  .auth-form,
+  .dashboard-panel {
+    padding: 16px;
+  }
 }
 
 @media (max-width: 560px) {
@@ -398,8 +412,8 @@ select:focus {
   }
 
   .brand-full-logo {
-    width: 86px;
-    height: 52px;
+    width: 78px;
+    height: 48px;
   }
 
   .brand-copy strong {
