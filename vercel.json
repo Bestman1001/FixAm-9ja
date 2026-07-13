@@ -17,6 +17,18 @@
     {
       "source": "/review",
       "destination": "/review.html"
+    },
+    {
+      "source": "/help",
+      "destination": "/help.html"
+    },
+    {
+      "source": "/policies",
+      "destination": "/policies.html"
+    },
+    {
+      "source": "/disclaimer",
+      "destination": "/disclaimer.html"
     }
   ]
 }
