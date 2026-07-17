@@ -1,17 +1,14 @@
 :root {
   color-scheme: light;
-  --ink: #111918;
-  --muted: #5f6f72;
-  --line: #d7e4df;
+  --ink: #17201f;
+  --muted: #62706c;
+  --line: #dce7e2;
   --surface: #ffffff;
-  --soft: #f3f8f5;
+  --soft: #f4f8f6;
   --deep: #064c48;
-  --green: #08a66d;
-  --gold: #f0ac25;
-  --blue: #2563eb;
-  --coral: #ff5a3d;
+  --green: #0b8f64;
   --danger: #8a2c1b;
-  --shadow: 0 24px 70px rgba(6, 50, 45, 0.13);
+  --shadow: 0 24px 70px rgba(15, 47, 43, 0.14);
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
@@ -23,9 +20,7 @@
 
 body {
   margin: 0;
-  background:
-    linear-gradient(135deg, rgba(191, 248, 220, 0.42), rgba(255, 247, 227, 0.44) 42%, rgba(231, 240, 255, 0.72)),
-    var(--soft);
+  background: var(--soft);
   color: var(--ink);
 }
 
@@ -50,7 +45,7 @@ button:disabled {
   align-items: center;
   justify-content: space-between;
   padding: 14px clamp(18px, 4vw, 54px);
-  background: rgba(255, 255, 255, 0.82);
+  background: rgba(255, 255, 255, 0.9);
   border-bottom: 1px solid var(--line);
   backdrop-filter: blur(16px);
 }
@@ -111,7 +106,7 @@ p {
   grid-template-columns: 1fr 1fr;
   gap: 14px;
   padding: clamp(18px, 3vw, 28px);
-  background: rgba(255, 255, 255, 0.94);
+  background: white;
   border: 1px solid var(--line);
   border-radius: 8px;
   box-shadow: var(--shadow);
@@ -153,7 +148,7 @@ textarea {
   min-height: 44px;
   padding: 0 12px;
   color: var(--ink);
-  background: #fbfdfc;
+  background: #f9fbfa;
   border: 1px solid var(--line);
   border-radius: 8px;
   outline: none;
@@ -177,18 +172,10 @@ textarea:focus {
   padding: 0 18px;
   border: 0;
   border-radius: 8px;
-  background: linear-gradient(135deg, var(--deep), var(--green));
+  background: var(--deep);
   color: white;
   font-weight: 900;
-  box-shadow: 0 14px 28px rgba(6, 76, 72, 0.22);
-  transition:
-    box-shadow 0.18s ease,
-    transform 0.18s ease;
-}
-
-.primary-action:hover {
-  box-shadow: 0 18px 34px rgba(6, 76, 72, 0.26);
-  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(6, 76, 72, 0.2);
 }
 
 .full-span,

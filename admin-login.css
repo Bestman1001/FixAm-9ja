@@ -8,8 +8,6 @@
   --deep: #07110f;
   --green: #68e0ae;
   --teal: #0f7d66;
-  --gold: #f2bd5c;
-  --blue: #8bb7ff;
   --danger: #ffad9a;
   --shadow: 0 34px 90px rgba(0, 0, 0, 0.34);
   font-family:
@@ -147,14 +145,6 @@ h2 {
   font-weight: 850;
 }
 
-.trust-strip span:nth-child(2) {
-  color: var(--gold);
-}
-
-.trust-strip span:nth-child(3) {
-  color: var(--blue);
-}
-
 .login-card {
   padding: clamp(20px, 4vw, 34px);
   border: 1px solid var(--line);
@@ -209,7 +199,7 @@ input:focus {
 
 .primary-action {
   border: 0;
-  background: linear-gradient(135deg, var(--teal), #19976e);
+  background: var(--teal);
   color: #f7fffc;
   box-shadow: 0 16px 34px rgba(15, 125, 102, 0.26);
 }
