@@ -437,4 +437,39 @@ select:focus {
   .tabs button {
     width: 100%;
   }
+
+  body {
+    overflow-x: hidden;
+  }
+
+  input,
+  textarea,
+  select,
+  button {
+    min-height: 48px;
+  }
+
+  input,
+  textarea,
+  select {
+    min-width: 0;
+    font-size: 16px;
+  }
+
+  .work-card,
+  .record-list article,
+  .metrics-grid > * {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .admin-shell {
+    padding-inline: 8px;
+    padding-bottom: max(32px, env(safe-area-inset-bottom));
+  }
+
+  .auth-form,
+  .dashboard-panel {
+    padding: 13px;
+  }
 }

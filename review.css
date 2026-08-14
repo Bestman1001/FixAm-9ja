@@ -231,4 +231,21 @@ textarea:focus {
   .review-form {
     grid-template-columns: 1fr;
   }
+
+  .review-shell {
+    padding-inline: 12px;
+  }
+
+  input,
+  textarea,
+  select,
+  button {
+    min-height: 48px;
+  }
+
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
 }

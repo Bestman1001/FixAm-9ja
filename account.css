@@ -692,4 +692,56 @@ textarea:focus {
   .quote-action-buttons button {
     width: 100%;
   }
+
+  body {
+    overflow-x: hidden;
+  }
+
+  input,
+  textarea,
+  select,
+  button,
+  .secondary-action {
+    min-height: 48px;
+  }
+
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+
+  .session-actions,
+  .session-actions a,
+  .session-actions button,
+  .profile-tools,
+  .profile-tools label,
+  .profile-tools input,
+  .profile-tools select,
+  .profile-tools textarea {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .account-card,
+  .record-list article {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .dashboard-panel {
+    padding-bottom: max(18px, env(safe-area-inset-bottom));
+  }
+}
+
+@media (max-width: 380px) {
+  .account-shell {
+    padding-inline: 8px;
+  }
+
+  .auth-panel,
+  .dashboard-panel,
+  .account-card {
+    padding: 13px;
+  }
 }

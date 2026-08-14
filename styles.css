@@ -1275,4 +1275,125 @@ footer a:hover {
   .modal-close {
     min-height: 40px;
   }
+
+  body {
+    overflow-x: hidden;
+  }
+
+  button,
+  a,
+  select {
+    touch-action: manipulation;
+  }
+
+  input,
+  textarea,
+  select {
+    min-height: 48px;
+    font-size: 16px;
+  }
+
+  .hero {
+    gap: 24px;
+    padding: 28px 12px 30px;
+  }
+
+  h1 {
+    font-size: clamp(2.35rem, 12vw, 3.5rem);
+    line-height: 1;
+  }
+
+  h2 {
+    font-size: clamp(1.85rem, 9vw, 2.7rem);
+  }
+
+  .hero-text {
+    line-height: 1.55;
+  }
+
+  .finder {
+    border-radius: 10px;
+  }
+
+  .search-panel {
+    gap: 14px;
+    padding: 12px;
+  }
+
+  .map-wrap,
+  #map {
+    min-height: 320px;
+    height: 320px;
+  }
+
+  .leaflet-control-zoom a {
+    width: 40px;
+    height: 40px;
+    line-height: 40px;
+  }
+
+  .results-panel,
+  .artisan-list {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .results-header,
+  .artisan-card {
+    padding-inline: 12px;
+  }
+
+  .card-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .card-actions button,
+  .profile-actions button {
+    width: 100%;
+    min-height: 48px;
+  }
+
+  .state-strip,
+  .category-section,
+  .trust-band,
+  .plans-section,
+  .join-section {
+    padding-inline: 12px;
+  }
+
+  .join-form {
+    padding: 16px;
+  }
+
+  footer {
+    align-items: flex-start;
+    padding-right: max(16px, env(safe-area-inset-right));
+    padding-bottom: max(24px, env(safe-area-inset-bottom));
+    padding-left: max(16px, env(safe-area-inset-left));
+  }
+}
+
+@media (max-width: 380px) {
+  .brand-full-logo {
+    width: 68px;
+  }
+
+  .brand-copy small {
+    font-size: 0.68rem;
+  }
+
+  .map-wrap,
+  #map {
+    min-height: 290px;
+    height: 290px;
+  }
+
+  .document-hero,
+  .document-card,
+  .document-body,
+  .faq-section,
+  .modal-panel {
+    padding: 16px;
+  }
 }

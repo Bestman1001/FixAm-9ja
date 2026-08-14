@@ -264,4 +264,15 @@ input:focus {
   h1 {
     font-size: clamp(2.6rem, 13vw, 4.4rem);
   }
+
+  .login-shell {
+    width: min(100% - 24px, 1180px);
+    padding-block: 24px max(32px, env(safe-area-inset-bottom));
+  }
+
+  input,
+  button {
+    min-height: 48px;
+    font-size: 16px;
+  }
 }
