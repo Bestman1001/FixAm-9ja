@@ -220,7 +220,7 @@ claimProfileButton.addEventListener("click", async () => {
   await loadDashboard({
     message: data?.length
       ? `${data[0].business_name} is now connected to your account.`
-      : "The profile matched, but Supabase blocked the claim. Run the updated Phase 5 claim policy SQL.",
+      : "The profile matched, but the account claim was blocked. Ask an administrator to check the database claim policy.",
     type: data?.length ? "success" : "error",
   });
 });
@@ -343,7 +343,7 @@ async function loadDashboard(note = null) {
   const firstError =
     quotesResult.error || applicationsResult.error || artisansResult.error || mediaResult.error || quoteLeadsResult.error;
   if (firstError) {
-    setNote(dashboardNote, `${firstError.message}. Make sure the Phase 5 SQL has been run.`, "error");
+    setNote(dashboardNote, `${firstError.message}. Ask an administrator to check that the latest database setup has been applied.`, "error");
     return;
   }
 

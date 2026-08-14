@@ -1076,7 +1076,7 @@ async function createSubscriptionRequest(action, button) {
 
   if (error) {
     setJoinStatus(
-      `Subscription activation could not be saved yet: ${error.message}. Run the Phase 7 SQL, then try again.`,
+      `Subscription activation could not be saved yet: ${error.message}. Ask an administrator to check the subscription database setup, then try again.`,
       "error",
       action,
     );
