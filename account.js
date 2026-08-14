@@ -29,6 +29,7 @@ const quoteDialogType = document.querySelector("#quoteDialogType");
 const quoteDialogTitle = document.querySelector("#quoteDialogTitle");
 const quoteDialogBody = document.querySelector("#quoteDialogBody");
 const quoteDialogClose = document.querySelector("#quoteDialogClose");
+const locationDirectory = window.FIXAM_LOCATIONS || { states: [] };
 
 let currentUser = null;
 let currentProfile = null;
@@ -157,6 +158,8 @@ artisanProfileForm.addEventListener("submit", async (event) => {
     business_name: document.querySelector("#artisanBusinessName").value.trim(),
     category: document.querySelector("#artisanCategory").value.trim(),
     area: document.querySelector("#artisanArea").value.trim(),
+    lga: document.querySelector("#artisanArea").value.trim(),
+    town: document.querySelector("#artisanTown").value.trim(),
     availability: document.querySelector("#artisanAvailability").value,
     service_radius: Number(document.querySelector("#artisanServiceRadius").value) || ownedArtisan.service_radius || 10,
     bio: document.querySelector("#artisanBio").value.trim(),
@@ -164,7 +167,12 @@ artisanProfileForm.addEventListener("submit", async (event) => {
   };
 
   setNote(dashboardNote, "Saving artisan profile...", "");
-  const { error } = await supabaseClient.from("artisans").update(payload).eq("id", ownedArtisan.id);
+  let { error } = await supabaseClient.from("artisans").update(payload).eq("id", ownedArtisan.id);
+  if (error && isMissingLocationColumn(error)) {
+    delete payload.lga;
+    delete payload.town;
+    ({ error } = await supabaseClient.from("artisans").update(payload).eq("id", ownedArtisan.id));
+  }
   await loadDashboard({
     message: error ? error.message : "Artisan profile saved.",
     type: error ? "error" : "success",
@@ -298,17 +306,13 @@ async function loadDashboard(note = null) {
       .limit(20),
       supabaseClient
         .from("artisan_applications")
-        .select(
-          "application_code, applicant_email, trade, state, area, status, media_count, verification_media_count, identity_verification_status, subscription_status, subscription_amount, created_at",
-        )
+        .select("*")
       .eq("applicant_user_id", currentUser.id)
       .order("created_at", { ascending: false })
       .limit(20),
     supabaseClient
       .from("artisans")
-      .select(
-        "id, business_name, category, state, area, phone, plan, profile_status, verification_status, identity_verification_status, subscription_status, subscription_plan, subscription_amount, bio, availability, service_radius, updated_at",
-      )
+      .select("*")
       .eq("owner_user_id", currentUser.id)
       .limit(5),
     supabaseClient
@@ -668,7 +672,7 @@ function renderApplications(items) {
             <article>
               <strong>${escapeHtml(item.application_code)} - ${escapeHtml(item.trade)}</strong>
               <small>${escapeHtml(item.applicant_email || currentUser.email || "No login email")}</small>
-              <small>${escapeHtml(item.area)}, ${escapeHtml(item.state)}</small>
+              <small>${escapeHtml([item.town, item.lga || item.area].filter(Boolean).join(", "))}, ${escapeHtml(item.state)}</small>
               <small>${escapeHtml(item.status)} - ${item.media_count || 0} portfolio media - ${item.verification_media_count || 0} identity proof</small>
               <small>NIN ${escapeHtml(item.identity_verification_status || "pending")} - Subscription ${escapeHtml(
                 item.subscription_status || "pending",
@@ -687,7 +691,7 @@ function renderArtisanProfile(items) {
           (item) => `
             <article class="connected-profile">
               <strong>${escapeHtml(item.business_name)}</strong>
-              <small>${escapeHtml(item.category)} in ${escapeHtml(item.area)}, ${escapeHtml(item.state)}</small>
+              <small>${escapeHtml(item.category)} in ${escapeHtml([item.town, item.lga || item.area].filter(Boolean).join(", "))}, ${escapeHtml(item.state)}</small>
               <small>${escapeHtml(item.profile_status)} - ${escapeHtml(item.plan)} - ${escapeHtml(item.verification_status)}</small>
               <small>NIN ${escapeHtml(item.identity_verification_status || "pending")} - Subscription ${escapeHtml(
                 item.subscription_status || "pending",
@@ -711,10 +715,22 @@ function fillArtisanProfileForm() {
 
   document.querySelector("#artisanBusinessName").value = ownedArtisan.business_name || "";
   document.querySelector("#artisanCategory").value = ownedArtisan.category || "";
-  document.querySelector("#artisanArea").value = ownedArtisan.area || "";
+  const lgaSelect = document.querySelector("#artisanArea");
+  const state = locationDirectory.states.find((item) => item.name === ownedArtisan.state);
+  const storedLga = ownedArtisan.lga || ownedArtisan.area || "";
+  const currentLga = locationDirectory.normalizeLga?.(ownedArtisan.state, storedLga) || storedLga;
+  lgaSelect.innerHTML = "";
+  (state?.lgas || [currentLga]).filter(Boolean).forEach((lga) => lgaSelect.add(new Option(lga, lga)));
+  lgaSelect.value = currentLga;
+  document.querySelector("#artisanTown").value = ownedArtisan.town || "";
   document.querySelector("#artisanAvailability").value = ownedArtisan.availability || "Taking scheduled jobs";
   document.querySelector("#artisanServiceRadius").value = ownedArtisan.service_radius || 10;
   document.querySelector("#artisanBio").value = ownedArtisan.bio || "";
+}
+
+function isMissingLocationColumn(error) {
+  const message = String(error?.message || "").toLowerCase();
+  return message.includes("column 'lga'") || message.includes("column 'town'") || message.includes("schema cache");
 }
 
 function renderMedia(items) {

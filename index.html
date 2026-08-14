@@ -80,7 +80,7 @@
               <select id="stateFilter"></select>
             </label>
             <label>
-              <span>Area</span>
+              <span>LGA / Area Council</span>
               <select id="areaFilter"></select>
             </label>
             <label>
@@ -144,7 +144,7 @@
           <article>
             <span>02</span>
             <h3>Location confidence</h3>
-            <p>Customers see nearby pins, distance in miles, service radius, and primary operating area.</p>
+            <p>Customers see nearby pins, distance in miles, service radius, LGA/Area Council, and town or neighbourhood.</p>
           </article>
           <article>
             <span>03</span>
@@ -211,8 +211,12 @@
             <select id="joinState"></select>
           </label>
           <label>
-            <span>Area</span>
+            <span>LGA / Area Council</span>
             <select id="joinArea"></select>
+          </label>
+          <label>
+            <span>Town / neighbourhood</span>
+            <input id="joinTown" type="text" placeholder="e.g. Lekki Phase 1" autocomplete="address-level3" required />
           </label>
           <label>
             <span>Phone number</span>
@@ -240,7 +244,7 @@
           </label>
           <label class="full-span">
             <span>Work summary</span>
-            <textarea id="joinDetails" rows="4" placeholder="Tell us your service area, strongest skills, and what customers usually call you for." required></textarea>
+            <textarea id="joinDetails" rows="4" placeholder="Tell us your service coverage, strongest skills, and what customers usually call you for." required></textarea>
           </label>
           <label class="full-span">
             <span>Portfolio images/videos</span>
@@ -282,7 +286,7 @@
           </label>
           <label>
             <span>Job location</span>
-            <input id="quoteLocation" type="text" placeholder="Area, city, landmark" required />
+            <input id="quoteLocation" type="text" placeholder="LGA, town, street or landmark" required />
           </label>
           <label>
             <span>Urgency</span>
@@ -321,9 +325,10 @@
       crossorigin=""
     ></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="location-data.js?v=20260814-lga"></script>
     <script src="supabase-config.js?v=20260814"></script>
-    <script src="app.js?v=20260814"></script>
-    <script src="help-widget.js?v=20260814"></script>
+    <script src="app.js?v=20260814-lga"></script>
+    <script src="help-widget.js?v=20260814-lga"></script>
   </body>
 </html>
 

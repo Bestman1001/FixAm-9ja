@@ -193,6 +193,36 @@ alter table public.quote_requests
 alter table public.quote_requests
   add column if not exists media_count integer not null default 0;
 
+alter table public.quote_requests
+  add column if not exists artisan_lga text,
+  add column if not exists artisan_town text;
+
+update public.quote_requests
+set artisan_lga = artisan_area
+where artisan_lga is null;
+
+update public.quote_requests
+set artisan_lga = case
+  when artisan_state = 'Lagos' and artisan_area in ('Lekki', 'Ajah') then 'Eti-Osa'
+  when artisan_state = 'Lagos' and artisan_area = 'Yaba' then 'Lagos Mainland'
+  when artisan_state = 'Abuja/FCT' and artisan_area in ('Wuse', 'Garki', 'Maitama', 'Gwarinpa', 'Lugbe') then 'Abuja Municipal Area Council'
+  when artisan_state = 'Edo' and artisan_area = 'Benin City' then 'Oredo'
+  when artisan_state = 'Edo' and artisan_area = 'Ekpoma' then 'Esan West'
+  when artisan_state = 'Edo' and artisan_area = 'Auchi' then 'Etsako West'
+  when artisan_state = 'Edo' and artisan_area = 'Uromi' then 'Esan North-East'
+  when artisan_state = 'Ogun' and artisan_area = 'Abeokuta' then 'Abeokuta South'
+  when artisan_state = 'Ogun' and artisan_area = 'Sango Ota' then 'Ado-Odo/Ota'
+  when artisan_state = 'Delta' and artisan_area = 'Warri' then 'Warri South'
+  when artisan_state = 'Delta' and artisan_area = 'Asaba' then 'Oshimili South'
+  when artisan_state = 'Delta' and artisan_area = 'Ughelli' then 'Ughelli North'
+  when artisan_state = 'Rivers' and artisan_area = 'Obio-Akpor' then 'Obio/Akpor'
+  else artisan_lga
+end;
+
+update public.quote_requests
+set artisan_area = artisan_lga
+where artisan_lga is not null and artisan_area is distinct from artisan_lga;
+
 create index if not exists quote_requests_created_at_idx
   on public.quote_requests (created_at desc);
 
@@ -245,6 +275,36 @@ alter table public.artisan_applications
 
 alter table public.artisan_applications
   add column if not exists media_count integer not null default 0;
+
+alter table public.artisan_applications
+  add column if not exists lga text,
+  add column if not exists town text;
+
+update public.artisan_applications
+set lga = area
+where lga is null;
+
+update public.artisan_applications
+set lga = case
+  when state = 'Lagos' and area in ('Lekki', 'Ajah') then 'Eti-Osa'
+  when state = 'Lagos' and area = 'Yaba' then 'Lagos Mainland'
+  when state = 'Abuja/FCT' and area in ('Wuse', 'Garki', 'Maitama', 'Gwarinpa', 'Lugbe') then 'Abuja Municipal Area Council'
+  when state = 'Edo' and area = 'Benin City' then 'Oredo'
+  when state = 'Edo' and area = 'Ekpoma' then 'Esan West'
+  when state = 'Edo' and area = 'Auchi' then 'Etsako West'
+  when state = 'Edo' and area = 'Uromi' then 'Esan North-East'
+  when state = 'Ogun' and area = 'Abeokuta' then 'Abeokuta South'
+  when state = 'Ogun' and area = 'Sango Ota' then 'Ado-Odo/Ota'
+  when state = 'Delta' and area = 'Warri' then 'Warri South'
+  when state = 'Delta' and area = 'Asaba' then 'Oshimili South'
+  when state = 'Delta' and area = 'Ughelli' then 'Ughelli North'
+  when state = 'Rivers' and area = 'Obio-Akpor' then 'Obio/Akpor'
+  else lga
+end;
+
+update public.artisan_applications
+set area = lga
+where lga is not null and area is distinct from lga;
 
 alter table public.artisan_applications
   add column if not exists nin_last4 text,
@@ -374,6 +434,36 @@ alter table public.artisans
   add column if not exists profile_image_url text;
 
 alter table public.artisans
+  add column if not exists lga text,
+  add column if not exists town text;
+
+update public.artisans
+set lga = area
+where lga is null;
+
+update public.artisans
+set lga = case
+  when state = 'Lagos' and area in ('Lekki', 'Ajah') then 'Eti-Osa'
+  when state = 'Lagos' and area = 'Yaba' then 'Lagos Mainland'
+  when state = 'Abuja/FCT' and area in ('Wuse', 'Garki', 'Maitama', 'Gwarinpa', 'Lugbe') then 'Abuja Municipal Area Council'
+  when state = 'Edo' and area = 'Benin City' then 'Oredo'
+  when state = 'Edo' and area = 'Ekpoma' then 'Esan West'
+  when state = 'Edo' and area = 'Auchi' then 'Etsako West'
+  when state = 'Edo' and area = 'Uromi' then 'Esan North-East'
+  when state = 'Ogun' and area = 'Abeokuta' then 'Abeokuta South'
+  when state = 'Ogun' and area = 'Sango Ota' then 'Ado-Odo/Ota'
+  when state = 'Delta' and area = 'Warri' then 'Warri South'
+  when state = 'Delta' and area = 'Asaba' then 'Oshimili South'
+  when state = 'Delta' and area = 'Ughelli' then 'Ughelli North'
+  when state = 'Rivers' and area = 'Obio-Akpor' then 'Obio/Akpor'
+  else lga
+end;
+
+update public.artisans
+set area = lga
+where lga is not null and area is distinct from lga;
+
+alter table public.artisans
   add column if not exists nin_last4 text,
   add column if not exists identity_verification_status text not null default 'pending',
   add column if not exists identity_verification_reference text,
@@ -387,6 +477,9 @@ alter table public.artisans
 
 create index if not exists artisans_state_area_idx
   on public.artisans (state, area);
+
+create index if not exists artisans_state_lga_idx
+  on public.artisans (state, lga);
 
 create index if not exists artisans_category_idx
   on public.artisans (category);

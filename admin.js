@@ -14,7 +14,8 @@ const subscriptionStatuses = ["pending", "founding", "free_trial", "active", "pa
 const serviceStatuses = ["active", "paused", "removed"];
 const reviewVisibilityStatuses = ["public", "flagged", "hidden"];
 const artisanStandingStatuses = ["active", "warning", "suspended", "removed"];
-const states = ["Lagos", "Abuja/FCT", "Edo", "Ogun", "Delta", "Rivers"];
+const locationDirectory = window.FIXAM_LOCATIONS || { states: [], centers: {} };
+const states = locationDirectory.states.map((state) => state.name);
 const stateCoordinates = {
   Lagos: [6.5244, 3.3792],
   "Abuja/FCT": [9.0765, 7.3986],
@@ -23,7 +24,7 @@ const stateCoordinates = {
   Delta: [5.5325, 5.8987],
   Rivers: [4.8156, 7.0498],
 };
-const areaCoordinates = {
+const areaCoordinates = locationDirectory.centers || {
   Lagos: {
     Ikeja: [6.6018, 3.3515],
     Lekki: [6.4698, 3.5852],
@@ -273,9 +274,7 @@ async function loadDashboard() {
       .limit(100),
       supabaseClient
         .from("artisan_applications")
-        .select(
-          "id, application_code, applicant_user_id, applicant_email, full_name, trade, state, area, phone, preferred_plan, years_experience, work_summary, status, media_count, nin_last4, nin_consent, liveness_consent, verification_media_count, identity_verification_status, subscription_status, subscription_amount, created_at",
-        )
+        .select("*")
       .order("created_at", { ascending: false })
       .limit(100),
     supabaseClient
@@ -292,9 +291,7 @@ async function loadDashboard() {
       .order("name", { ascending: true }),
     supabaseClient
       .from("artisans")
-      .select(
-        "id, application_id, business_name, owner_name, phone, category, state, area, lat, lng, plan, profile_status, verification_status, identity_verification_status, identity_verified_at, nin_last4, subscription_status, subscription_plan, subscription_amount, subscription_expires_at, payment_reference, bio, skills, availability, service_radius, jobs, completed_jobs, rating, response_time, verification_checks, portfolio_items, created_at, updated_at",
-      )
+      .select("*")
       .order("updated_at", { ascending: false })
       .limit(200),
     supabaseClient
@@ -950,7 +947,8 @@ async function createArtisanFromApplication(applicationId) {
     return;
   }
 
-  const coords = coordinatesFor(application.state, application.area);
+  const canonicalLga = locationDirectory.normalizeLga?.(application.state, application.lga || application.area) || application.lga || application.area;
+  const coords = coordinatesFor(application.state, canonicalLga);
   const payload = {
     application_id: application.id,
     business_name: application.full_name,
@@ -959,7 +957,9 @@ async function createArtisanFromApplication(applicationId) {
     phone: application.phone,
     category: application.trade,
     state: application.state,
-    area: application.area,
+    area: canonicalLga,
+    lga: canonicalLga,
+    town: application.town || "",
     lat: coords.lat,
     lng: coords.lng,
     plan: "Verified",
@@ -980,7 +980,12 @@ async function createArtisanFromApplication(applicationId) {
   };
 
   setNote(dashboardNote, "Creating live artisan profile...", "");
-  const { data, error } = await supabaseClient.from("artisans").insert(payload).select().single();
+  let { data, error } = await supabaseClient.from("artisans").insert(payload).select().single();
+  if (error && isMissingLocationColumn(error)) {
+    delete payload.lga;
+    delete payload.town;
+    ({ data, error } = await supabaseClient.from("artisans").insert(payload).select().single());
+  }
 
   if (error) {
     setNote(dashboardNote, error.message, "error");
@@ -1255,6 +1260,11 @@ function coordinatesFor(state, area) {
     lat: Number((baseLat + latOffset).toFixed(7)),
     lng: Number((baseLng + lngOffset).toFixed(7)),
   };
+}
+
+function isMissingLocationColumn(error) {
+  const message = String(error?.message || "").toLowerCase();
+  return message.includes("column 'lga'") || message.includes("column 'town'") || message.includes("schema cache");
 }
 
 function normalizePlan(plan) {

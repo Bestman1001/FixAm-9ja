@@ -175,7 +175,8 @@ async function upsertVerifiedArtisan(
   reference: string,
   now: string,
 ) {
-  const coords = coordinatesFor(application.state, application.area);
+  const lga = application.lga || application.area;
+  const coords = coordinatesFor(application.state, lga);
   const subscriptionPlan = normalizeSubscriptionPlan(application.preferred_plan || application.subscription_plan);
   const subscriptionAmount = Number(application.subscription_amount || subscriptionAmountForPlan(subscriptionPlan));
   const launchAccess = application.subscription_status === "active" ? "active" : "founding";
@@ -193,7 +194,9 @@ async function upsertVerifiedArtisan(
     phone: application.phone,
     category: application.trade,
     state: application.state,
-    area: application.area,
+    area: lga,
+    lga,
+    town: application.town || "",
     lat: coords.lat,
     lng: coords.lng,
     plan: "Verified",

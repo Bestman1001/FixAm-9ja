@@ -48,6 +48,10 @@ The public website gets insert access to `quote_requests`, `artisan_applications
 5. Claimed artisans can see a quote-lead count for customer requests sent to their artisan profile.
 6. Claimed artisans can upload portfolio media from the account dashboard.
 
+## LGA + Town Location Model
+
+Run the latest `schema.sql` before deploying the LGA interface. The canonical location fields are `state`, `lga`, and optional `town`. The legacy `area` fields remain populated with the LGA value for compatibility with existing profiles, quote links, and older deployments. FCT users select an Area Council through the same LGA/Area Council control.
+
 ## NIN + Selfie/Liveness Verification Edge Function
 
 The browser must never call an identity provider directly. Deploy `supabase/functions/verify-nin` and store VerifyMe/QoreID, Youverify, or another provider's credentials as Supabase Edge Function secrets.

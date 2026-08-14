@@ -1,11 +1,5 @@
-const states = [
-  { name: "Lagos", center: [6.5244, 3.3792], areas: ["Ikeja", "Lekki", "Yaba", "Surulere", "Ajah"] },
-  { name: "Abuja/FCT", center: [9.0765, 7.3986], areas: ["Wuse", "Garki", "Maitama", "Gwarinpa", "Lugbe"] },
-  { name: "Edo", center: [6.335, 5.6037], areas: ["Benin City", "Ekpoma", "Auchi", "Uromi"] },
-  { name: "Ogun", center: [7.1608, 3.3483], areas: ["Abeokuta", "Sango Ota", "Ijebu Ode", "Sagamu"] },
-  { name: "Delta", center: [5.704, 5.9339], areas: ["Warri", "Asaba", "Sapele", "Ughelli"] },
-  { name: "Rivers", center: [4.8156, 7.0498], areas: ["Port Harcourt", "Obio-Akpor", "Bonny", "Eleme"] },
-];
+const locationDirectory = window.FIXAM_LOCATIONS || { states: [], centers: {} };
+const states = locationDirectory.states.map((state) => ({ ...state, areas: state.lgas }));
 
 const defaultServiceCategories = [
   ["Electrician", "Power, wiring, repairs", ["House wiring", "Fault tracing", "Inverter setup"]],
@@ -60,22 +54,22 @@ let categories = defaultServiceCategories.map(([name, description, skills]) => (
 
 const demoArtisans = [
   ["Lagos", "Ikeja", "Electrician", "Tunde Bright Electricals", 6.6018, 3.3515, 4.9, 22, "12 min", "Verified"],
-  ["Lagos", "Lekki", "AC Technician", "Kemi CoolFix Services", 6.4698, 3.5852, 4.8, 18, "18 min", "Pro"],
-  ["Lagos", "Yaba", "Tailor", "Ayo Urban Stitches", 6.5145, 3.3896, 4.7, 31, "20 min", "Verified"],
-  ["Abuja/FCT", "Wuse", "Plumber", "Musa FlowMaster", 9.0833, 7.4667, 4.9, 27, "15 min", "Verified"],
-  ["Abuja/FCT", "Gwarinpa", "Solar Installer", "NorthLight Solar Works", 9.1099, 7.4042, 4.8, 16, "24 min", "Pro"],
-  ["Abuja/FCT", "Garki", "Painter", "FCT Prime Finishers", 9.0339, 7.4898, 4.6, 20, "21 min", "Basic"],
-  ["Edo", "Benin City", "Carpenter", "Osas FineWood Studio", 6.3349, 5.6037, 4.9, 34, "17 min", "Verified"],
-  ["Edo", "Auchi", "Mechanic", "Ibrahim AutoCare", 7.0676, 6.2636, 4.7, 19, "29 min", "Verified"],
-  ["Edo", "Ekpoma", "Tailor", "Grace Fit & Sew", 6.742, 6.139, 4.8, 25, "25 min", "Pro"],
-  ["Ogun", "Abeokuta", "Plumber", "RockCity Pipe Works", 7.1475, 3.3619, 4.7, 15, "19 min", "Verified"],
-  ["Ogun", "Sango Ota", "Electrician", "Ota Smart Wiring", 6.6899, 3.232, 4.8, 29, "16 min", "Pro"],
+  ["Lagos", "Eti-Osa", "AC Technician", "Kemi CoolFix Services", 6.4698, 3.5852, 4.8, 18, "18 min", "Pro"],
+  ["Lagos", "Lagos Mainland", "Tailor", "Ayo Urban Stitches", 6.5145, 3.3896, 4.7, 31, "20 min", "Verified"],
+  ["Abuja/FCT", "Abuja Municipal Area Council", "Plumber", "Musa FlowMaster", 9.0833, 7.4667, 4.9, 27, "15 min", "Verified"],
+  ["Abuja/FCT", "Abuja Municipal Area Council", "Solar Installer", "NorthLight Solar Works", 9.1099, 7.4042, 4.8, 16, "24 min", "Pro"],
+  ["Abuja/FCT", "Abuja Municipal Area Council", "Painter", "FCT Prime Finishers", 9.0339, 7.4898, 4.6, 20, "21 min", "Basic"],
+  ["Edo", "Oredo", "Carpenter", "Osas FineWood Studio", 6.3349, 5.6037, 4.9, 34, "17 min", "Verified"],
+  ["Edo", "Etsako West", "Mechanic", "Ibrahim AutoCare", 7.0676, 6.2636, 4.7, 19, "29 min", "Verified"],
+  ["Edo", "Esan West", "Tailor", "Grace Fit & Sew", 6.742, 6.139, 4.8, 25, "25 min", "Pro"],
+  ["Ogun", "Abeokuta South", "Plumber", "RockCity Pipe Works", 7.1475, 3.3619, 4.7, 15, "19 min", "Verified"],
+  ["Ogun", "Ado-Odo/Ota", "Electrician", "Ota Smart Wiring", 6.6899, 3.232, 4.8, 29, "16 min", "Pro"],
   ["Ogun", "Sagamu", "Painter", "Remo Finish Crew", 6.8322, 3.6319, 4.5, 11, "33 min", "Basic"],
-  ["Delta", "Warri", "Mechanic", "Efe Rapid Motors", 5.5167, 5.75, 4.9, 41, "14 min", "Pro"],
-  ["Delta", "Asaba", "Electrician", "Nedu PowerCare", 6.1985, 6.7319, 4.8, 26, "22 min", "Verified"],
+  ["Delta", "Warri South", "Mechanic", "Efe Rapid Motors", 5.5167, 5.75, 4.9, 41, "14 min", "Pro"],
+  ["Delta", "Oshimili South", "Electrician", "Nedu PowerCare", 6.1985, 6.7319, 4.8, 26, "22 min", "Verified"],
   ["Delta", "Sapele", "Carpenter", "Delta Woodline", 5.8941, 5.6767, 4.6, 13, "35 min", "Basic"],
   ["Rivers", "Port Harcourt", "AC Technician", "PH CoolRoom Experts", 4.8156, 7.0498, 4.9, 37, "13 min", "Pro"],
-  ["Rivers", "Obio-Akpor", "Plumber", "Rivers LeakStop", 4.8678, 7.012, 4.8, 23, "20 min", "Verified"],
+  ["Rivers", "Obio/Akpor", "Plumber", "Rivers LeakStop", 4.8678, 7.012, 4.8, 23, "20 min", "Verified"],
   ["Rivers", "Eleme", "Solar Installer", "GreenPort Energy", 4.7857, 7.1206, 4.7, 17, "28 min", "Verified"],
 ].map(([state, area, category, name, lat, lng, rating, jobs, response, plan], index) => ({
   id: index + 1,
@@ -131,7 +125,7 @@ function portfolioFor(category) {
 }
 
 const originByState = Object.fromEntries(states.map((state) => [state.name, state.center]));
-const originByArea = {
+const originByArea = locationDirectory.centers || {
   Lagos: {
     Ikeja: [6.6018, 3.3515],
     Lekki: [6.4698, 3.5852],
@@ -208,6 +202,7 @@ const joinForm = document.querySelector("#joinForm");
 const joinTrade = document.querySelector("#joinTrade");
 const joinState = document.querySelector("#joinState");
 const joinArea = document.querySelector("#joinArea");
+const joinTown = document.querySelector("#joinTown");
 const joinNote = document.querySelector("#joinNote");
 const joinSubmitButton = joinForm.querySelector("button[type='submit']");
 let selectedQuoteArtisan = null;
@@ -231,7 +226,7 @@ document.querySelector("#stateGrid").innerHTML = states
     (state) => `
       <article class="state-card">
         <h3>${state.name}</h3>
-        <p>${state.areas.join(", ")} and nearby communities.</p>
+        <p>${state.areas.length} LGAs/Area Councils available for local discovery.</p>
         <button type="button" data-state="${state.name}">Explore ${state.name}</button>
       </article>
     `,
@@ -289,7 +284,7 @@ function syncAreas() {
   const selected = states.find((state) => state.name === stateFilter.value);
   const selectedArea = areaFilter.value || savedAreaName(selected.name);
   areaFilter.innerHTML = "";
-  areaFilter.add(new Option("All areas", "All"));
+  areaFilter.add(new Option("All LGAs / Area Councils", "All"));
   selected.areas.forEach((area) => areaFilter.add(new Option(area, area)));
   areaFilter.value = selected.areas.includes(selectedArea) ? selectedArea : "All";
   setSelectedOrigin();
@@ -417,7 +412,7 @@ function renderCards(matches) {
             <div class="artisan-top">
               <div>
                 <h3>${artisan.name}</h3>
-                <p>${artisan.category} in ${artisan.area}</p>
+                <p>${artisan.category} in ${artisanLocation(artisan)}</p>
               </div>
               <span class="rating">${displayRating(artisan)}</span>
             </div>
@@ -437,7 +432,7 @@ function renderCards(matches) {
           </article>
         `,
       )
-      .join("") || `<article class="artisan-card"><h3>No matches yet</h3><p>Try another service or area.</p></article>`;
+      .join("") || `<article class="artisan-card"><h3>No matches yet</h3><p>Try another service or LGA/Area Council.</p></article>`;
 }
 
 function renderMap(matches) {
@@ -539,7 +534,7 @@ document.querySelector("#locateButton").addEventListener("click", () => {
   if (!navigator.geolocation) {
     setSelectedOrigin();
     render();
-    mapStatus.textContent = "Location access is not available in this browser. Showing selected area instead.";
+    mapStatus.textContent = "Location access is not available in this browser. Showing the selected LGA/Area Council instead.";
     return;
   }
 
@@ -554,7 +549,7 @@ document.querySelector("#locateButton").addEventListener("click", () => {
     () => {
       setSelectedOrigin();
       render();
-      mapStatus.textContent = "Location permission was not granted. Showing selected area instead.";
+      mapStatus.textContent = "Location permission was not granted. Showing the selected LGA/Area Council instead.";
     },
     { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
   );
@@ -601,6 +596,8 @@ quoteForm.addEventListener("submit", async (event) => {
     artisan_category: selectedQuoteArtisan.category,
     artisan_state: selectedQuoteArtisan.state,
     artisan_area: selectedQuoteArtisan.area,
+    artisan_lga: selectedQuoteArtisan.area,
+    artisan_town: selectedQuoteArtisan.town || "",
     customer_name: document.querySelector("#quoteName").value.trim(),
     customer_phone: document.querySelector("#quotePhone").value.trim(),
     job_location: document.querySelector("#quoteLocation").value.trim(),
@@ -625,7 +622,12 @@ quoteForm.addEventListener("submit", async (event) => {
     return;
   }
 
-  const { error } = await insertWithTimeout("quote_requests", payload);
+  let { error } = await insertWithTimeout("quote_requests", payload);
+  if (error && isMissingLocationColumn(error)) {
+    delete payload.artisan_lga;
+    delete payload.artisan_town;
+    ({ error } = await insertWithTimeout("quote_requests", payload));
+  }
 
   if (error) {
     setQuoteStatus(formatSubmitError(error), "error");
@@ -707,10 +709,12 @@ joinForm.addEventListener("submit", async (event) => {
     trade: joinTrade.value,
     state: joinState.value,
     area: joinArea.value,
+    lga: joinArea.value,
+    town: joinTown.value.trim(),
     phone: normalizedPhone,
     preferred_plan: document.querySelector("#joinPlan").value,
     years_experience: Number(document.querySelector("#joinExperience").value),
-    work_summary: document.querySelector("#joinDetails").value.trim(),
+    work_summary: `${document.querySelector("#joinDetails").value.trim()}\n\nLocation: ${joinTown.value.trim()}, ${joinArea.value}, ${joinState.value}`,
     applicant_user_id: await currentUserId(),
     nin_last4: nin.slice(-4),
     nin_consent: hasNinConsent,
@@ -740,7 +744,12 @@ joinForm.addEventListener("submit", async (event) => {
     return;
   }
 
-  const { error } = await insertWithTimeout("artisan_applications", payload);
+  let { error } = await insertWithTimeout("artisan_applications", payload);
+  if (error && isMissingLocationColumn(error)) {
+    delete payload.lga;
+    delete payload.town;
+    ({ error } = await insertWithTimeout("artisan_applications", payload));
+  }
 
   if (error) {
     setJoinStatus(formatSubmitError(error), "error");
@@ -890,15 +899,19 @@ function subscriptionAmountForPlan(plan) {
 async function loadRealArtisans() {
   if (!supabaseClient) return;
 
-  const { data, error } = await supabaseClient
-    .from("artisans")
-    .select(
-      "id, state, area, category, business_name, lat, lng, rating, jobs, response_time, plan, subscription_plan, subscription_status, bio, skills, availability, service_radius, completed_jobs, verification_status, verification_checks, portfolio_items, profile_status",
-    )
-    .eq("profile_status", "active")
-    .eq("verification_status", "verified")
-    .in("subscription_status", ["active", "founding", "free_trial"])
-    .order("business_name");
+  const legacyColumns = "id, state, area, category, business_name, lat, lng, rating, jobs, response_time, plan, subscription_plan, subscription_status, bio, skills, availability, service_radius, completed_jobs, verification_status, verification_checks, portfolio_items, profile_status";
+  const fetchArtisans = (columns) => supabaseClient
+      .from("artisans")
+      .select(columns)
+      .eq("profile_status", "active")
+      .eq("verification_status", "verified")
+      .in("subscription_status", ["active", "founding", "free_trial"])
+      .order("business_name");
+
+  let { data, error } = await fetchArtisans(`${legacyColumns}, lga, town`);
+  if (error && isMissingLocationColumn(error)) {
+    ({ data, error } = await fetchArtisans(legacyColumns));
+  }
 
   if (error) {
     artisans = [];
@@ -909,7 +922,8 @@ async function loadRealArtisans() {
   artisans = (data || []).map((artisan) => ({
     id: artisan.id,
     state: artisan.state,
-    area: artisan.area,
+    area: locationDirectory.normalizeLga?.(artisan.state, artisan.lga || artisan.area) || artisan.lga || artisan.area,
+    town: artisan.town || "",
     category: artisan.category,
     name: artisan.business_name,
     lat: Number(artisan.lat),
@@ -1304,12 +1318,21 @@ function formatSubmitError(error) {
     : `We could not save this yet: ${error.message}`;
 }
 
+function artisanLocation(artisan) {
+  return [artisan.town, artisan.area].filter(Boolean).join(", ");
+}
+
+function isMissingLocationColumn(error) {
+  const message = String(error?.message || "").toLowerCase();
+  return message.includes("artisan_lga") || message.includes("artisan_town") || message.includes("column 'lga'") || message.includes("column 'town'") || message.includes("schema cache");
+}
+
 function openProfile(artisan) {
   profileContent.innerHTML = `
     <div class="profile-hero">
       <div class="profile-avatar">${artisan.initials}</div>
       <div>
-        <p class="eyebrow">${artisan.category} in ${artisan.area}</p>
+        <p class="eyebrow">${artisan.category} in ${artisanLocation(artisan)}</p>
         <h2 id="profileTitle">${artisan.name}</h2>
         <p>${artisan.bio}</p>
       </div>
@@ -1333,7 +1356,7 @@ function openProfile(artisan) {
       <section>
         <h3>Portfolio</h3>
         <div class="portfolio-grid">${artisan.portfolio
-          .map((item) => `<article><strong>${item}</strong><small>${artisan.area}, ${artisan.state}</small></article>`)
+          .map((item) => `<article><strong>${item}</strong><small>${artisanLocation(artisan)}, ${artisan.state}</small></article>`)
           .join("")}</div>
       </section>
       <section>
@@ -1358,7 +1381,7 @@ function openProfile(artisan) {
 
 function openQuote(artisan) {
   selectedQuoteArtisan = artisan;
-  quoteArtisanText.textContent = `Requesting ${artisan.category.toLowerCase()} support from ${artisan.name} in ${artisan.area}, ${artisan.state}.`;
+  quoteArtisanText.textContent = `Requesting ${artisan.category.toLowerCase()} support from ${artisan.name} in ${artisanLocation(artisan)}, ${artisan.state}.`;
   setQuoteStatus("Your request will be saved once the FixAm 9ja database is connected.", "");
   quoteForm.reset();
   quoteSubmitButton.disabled = false;

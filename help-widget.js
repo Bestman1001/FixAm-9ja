@@ -4,13 +4,13 @@
       title: "How customers request a quote",
       keywords: ["customer", "quote", "request", "job", "photos"],
       answer:
-        "Choose your state, area, and service, then open an artisan profile and select Request quote. Add your name, phone number, job location, urgency, job details, and photos or videos if useful. The artisan sees the lead in their account dashboard."
+        "Choose your state, LGA/Area Council, and service, then open an artisan profile and select Request quote. Add your name, phone number, job location, urgency, job details, and photos or videos if useful. The artisan sees the lead in their account dashboard."
     },
     {
       title: "How artisans join FixAm 9ja",
       keywords: ["artisan", "register", "join", "onboarding", "profile"],
       answer:
-        "Use Join as Artisan, enter your email, trade, state, area, Nigerian phone number, NIN, selfie/liveness proof, experience, work summary, and portfolio media. Founding artisans can apply before paid subscriptions fully begin."
+        "Use Join as Artisan, enter your email, trade, state, LGA/Area Council, town or neighbourhood, Nigerian phone number, NIN, selfie/liveness proof, experience, work summary, and portfolio media. Founding artisans can apply before paid subscriptions fully begin."
     },
     {
       title: "NIN and liveness verification",
@@ -44,9 +44,9 @@
     },
     {
       title: "States, areas, and map location",
-      keywords: ["state", "area", "map", "location", "radius", "near"],
+      keywords: ["state", "lga", "area council", "town", "map", "location", "radius", "near"],
       answer:
-        "The marketplace remembers selected state and area where possible. The map uses area coordinates and artisan profile coordinates to show local results and estimate distance. Live GPS can be added later for more precise customer matching."
+        "The marketplace remembers the selected state and LGA/Area Council where possible. It uses LGA and artisan profile coordinates to show local results and estimate distance, while town or neighbourhood gives customers more precise context."
     },
     {
       title: "Uploading photos and videos",

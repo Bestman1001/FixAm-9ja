@@ -148,8 +148,12 @@
                 <input id="artisanCategory" type="text" />
               </label>
               <label>
-                <span>Area</span>
-                <input id="artisanArea" type="text" />
+                <span>LGA / Area Council</span>
+                <select id="artisanArea"></select>
+              </label>
+              <label>
+                <span>Town / neighbourhood</span>
+                <input id="artisanTown" type="text" placeholder="e.g. Gwarinpa" />
               </label>
               <label>
                 <span>Availability</span>
@@ -196,9 +200,10 @@
     </dialog>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="location-data.js?v=20260814-lga"></script>
     <script src="supabase-config.js?v=20260814"></script>
-    <script src="account.js?v=20260814"></script>
-    <script src="help-widget.js?v=20260814"></script>
+    <script src="account.js?v=20260814-lga"></script>
+    <script src="help-widget.js?v=20260814-lga"></script>
   </body>
 </html>
 
