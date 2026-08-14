@@ -171,6 +171,7 @@ const areaStorageKey = "fixam9ja.selectedArea";
 const foundingLaunchFree = true;
 let activeOrigin = originByState[defaultStateName];
 let activeOriginLabel = null;
+let animateLgaFocus = false;
 let markers = [];
 let userMarker = null;
 let reviewStatsByArtisanId = new Map();
@@ -239,7 +240,7 @@ renderJoinTradeOptions();
 const map = L.map("map", { scrollWheelZoom: false }).setView(originByState[stateFilter.value], 11);
 L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
   maxZoom: 19,
-  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> | LGA data: <a href="https://www.geoboundaries.org/">GRID3/geoBoundaries</a>',
 }).addTo(map);
 
 function milesBetween([lat1, lon1], [lat2, lon2]) {
@@ -466,7 +467,12 @@ function renderMap(matches) {
   const selectedState = states.find((state) => state.name === stateFilter.value);
   map.invalidateSize();
   if (areaFilter.value !== "All") {
-    map.setView(activeOrigin, markers.length ? 13 : 12);
+    const focusZoom = stateFilter.value === "Lagos" ? 12 : 10;
+    if (animateLgaFocus) {
+      map.flyTo(activeOrigin, focusZoom, { animate: true, duration: 0.8 });
+    } else {
+      map.setView(activeOrigin, focusZoom);
+    }
   } else if (markers.length === 1) {
     map.setView([matches[0].lat, matches[0].lng], 12);
   } else if (markers.length) {
@@ -479,6 +485,7 @@ function renderMap(matches) {
   mapStatus.textContent = `Showing ${matches.length} verified artisan${matches.length === 1 ? "" : "s"} near ${
     activeOriginLabel || stateFilter.value
   }`;
+  animateLgaFocus = false;
 }
 
 function render() {
@@ -504,6 +511,7 @@ joinState.addEventListener("change", () => {
 areaFilter.addEventListener("change", () => {
   saveAreaName(areaFilter.value);
   setSelectedOrigin();
+  animateLgaFocus = areaFilter.value !== "All";
   render();
 });
 serviceSearch.addEventListener("input", render);
