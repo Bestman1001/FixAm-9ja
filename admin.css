@@ -173,6 +173,7 @@ p {
   top: 98px;
   display: grid;
   grid-column: 1;
+  grid-row: 4;
   align-content: start;
 }
 
@@ -181,9 +182,16 @@ p {
   text-align: left;
 }
 
-.dashboard-panel > .form-note,
-.dashboard-panel > .work-list {
+.dashboard-panel > .admin-content {
   grid-column: 2;
+  grid-row: 4;
+}
+
+.admin-content {
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  gap: 14px;
 }
 
 .auth-form {
@@ -296,7 +304,7 @@ select:focus {
 
 .metrics-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
   gap: 10px;
 }
 
@@ -510,9 +518,9 @@ select:focus {
   .user-count-ribbon,
   .metrics-grid,
   .dashboard-panel > .tabs,
-  .dashboard-panel > .form-note,
-  .dashboard-panel > .work-list {
+  .dashboard-panel > .admin-content {
     grid-column: 1;
+    grid-row: auto;
   }
 
   .dashboard-panel > .tabs {
