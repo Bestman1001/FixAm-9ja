@@ -293,8 +293,17 @@ async function loadDashboard(note = null) {
 
   setNote(dashboardNote, "Loading account...", "");
   currentProfile = await loadProfile();
+  if (currentProfile?.account_status === "suspended") {
+    await supabaseClient.auth.signOut();
+    setSignedOut();
+    setNote(authNote, `This account is suspended. ${currentProfile.status_reason || "Contact FixAm 9ja support for assistance."}`, "error");
+    return;
+  }
   fillProfileForm();
   applyAccountRoleView();
+  if (currentProfile?.account_status === "restricted") {
+    setNote(dashboardNote, `Account access is restricted. ${currentProfile.status_reason || "Contact FixAm 9ja support."}`, "error");
+  }
 
   const [quotesResult, applicationsResult, artisansResult, mediaResult] = await Promise.all([
     supabaseClient
@@ -352,7 +361,11 @@ async function loadDashboard(note = null) {
     return;
   }
 
-  setNote(dashboardNote, note?.message || "Account loaded.", note?.type || "success");
+  if (currentProfile?.account_status === "restricted") {
+    setNote(dashboardNote, `Account access is restricted. ${currentProfile.status_reason || "Contact FixAm 9ja support."}`, "error");
+  } else {
+    setNote(dashboardNote, note?.message || "Account loaded.", note?.type || "success");
+  }
 }
 
 async function loadProfile() {

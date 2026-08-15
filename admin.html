@@ -6,7 +6,7 @@
     <title>FixAm 9ja Admin</title>
     <meta name="robots" content="noindex" />
     <link rel="icon" href="fixam-logo.jpg" />
-    <link rel="stylesheet" href="admin.css?v=20260815-user-counts" />
+    <link rel="stylesheet" href="admin.css?v=20260815-operations" />
   </head>
   <body>
     <header class="admin-topbar">
@@ -34,7 +34,7 @@
           <p class="eyebrow">Admin access</p>
           <h1>Manage quote requests and artisan applications.</h1>
           <p>
-            Sign in with a Supabase Auth admin user that also exists in `admin_profiles`.
+            Sign in with an approved FixAm 9ja administrator account.
           </p>
         </div>
         <form class="auth-form" id="authForm">
@@ -61,6 +61,10 @@
             <h1>FixAm request desk</h1>
           </div>
           <div class="filters">
+            <label class="admin-search-field">
+              <span>Search</span>
+              <input id="adminSearch" type="search" placeholder="Name, code, email, phone..." autocomplete="off" />
+            </label>
             <label>
               <span>State</span>
               <select id="stateFilter">
@@ -121,31 +125,39 @@
         </div>
 
         <nav class="tabs" aria-label="Dashboard views">
-          <button class="is-active" type="button" data-view="quotes">Quote requests</button>
+          <button class="is-active" type="button" data-view="overview">Overview</button>
+          <button type="button" data-view="users">Users</button>
+          <button type="button" data-view="verification">Verification</button>
+          <button type="button" data-view="quotes">Quote requests</button>
           <button type="button" data-view="applications">Artisan applications</button>
           <button type="button" data-view="subscriptions">Subscriptions</button>
           <button type="button" data-view="services">Services</button>
           <button type="button" data-view="artisans">Artisan profiles</button>
           <button type="button" data-view="reviews">Customer reviews</button>
           <button type="button" data-view="quality">Artisan quality</button>
+          <button type="button" data-view="audit">Audit log</button>
         </nav>
 
         <p class="form-note" id="dashboardNote">Loading dashboard...</p>
 
-        <section class="work-list" id="quoteList" aria-live="polite"></section>
+        <section class="work-list overview-list" id="overviewList" aria-live="polite"></section>
+        <section class="work-list" id="userList" aria-live="polite" hidden></section>
+        <section class="work-list" id="verificationList" aria-live="polite" hidden></section>
+        <section class="work-list" id="quoteList" aria-live="polite" hidden></section>
         <section class="work-list" id="applicationList" aria-live="polite" hidden></section>
         <section class="work-list" id="subscriptionList" aria-live="polite" hidden></section>
         <section class="work-list" id="serviceList" aria-live="polite" hidden></section>
         <section class="work-list" id="profileList" aria-live="polite" hidden></section>
         <section class="work-list" id="reviewList" aria-live="polite" hidden></section>
         <section class="work-list" id="qualityList" aria-live="polite" hidden></section>
+        <section class="work-list" id="auditList" aria-live="polite" hidden></section>
       </section>
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="location-data.js?v=20260814-map"></script>
     <script src="supabase-config.js?v=20260814"></script>
-    <script src="admin.js?v=20260815-user-counts"></script>
+    <script src="admin.js?v=20260815-operations"></script>
   </body>
 </html>
 

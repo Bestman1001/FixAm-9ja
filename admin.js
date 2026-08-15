@@ -14,6 +14,13 @@ const subscriptionStatuses = ["pending", "founding", "free_trial", "active", "pa
 const serviceStatuses = ["active", "paused", "removed"];
 const reviewVisibilityStatuses = ["public", "flagged", "hidden"];
 const artisanStandingStatuses = ["active", "warning", "suspended", "removed"];
+const accountStatuses = ["active", "restricted", "suspended"];
+const statusesByView = {
+  overview: [], users: accountStatuses, verification: identityVerificationStatuses,
+  quotes: quoteStatuses, applications: applicationStatuses, subscriptions: subscriptionStatuses,
+  services: serviceStatuses, artisans: [...artisanProfileStatuses, ...verificationStatuses],
+  reviews: reviewVisibilityStatuses, quality: artisanStandingStatuses, audit: ["admin", "automation"],
+};
 const locationDirectory = window.FIXAM_LOCATIONS || { states: [], centers: {} };
 const states = locationDirectory.states.map((state) => state.name);
 const stateCoordinates = {
@@ -81,10 +88,15 @@ const serviceList = document.querySelector("#serviceList");
 const profileList = document.querySelector("#profileList");
 const reviewList = document.querySelector("#reviewList");
 const qualityList = document.querySelector("#qualityList");
+const overviewList = document.querySelector("#overviewList");
+const userList = document.querySelector("#userList");
+const verificationList = document.querySelector("#verificationList");
+const auditList = document.querySelector("#auditList");
 const metricsGrid = document.querySelector("#metricsGrid");
 const userCountRibbon = document.querySelector("#userCountRibbon");
 const stateFilter = document.querySelector("#stateFilter");
 const statusFilter = document.querySelector("#statusFilter");
+const adminSearch = document.querySelector("#adminSearch");
 
 let quotes = [];
 let applications = [];
@@ -93,10 +105,14 @@ let serviceCategories = [];
 let artisans = [];
 let reviews = [];
 let qualityControls = [];
+let userProfiles = [];
+let auditEvents = [];
 let userCounts = { total: 0, artisans: 0, customers: 0 };
-let activeView = "quotes";
+let metricCounts = null;
+let activeView = "overview";
 
 states.forEach((state) => stateFilter.add(new Option(state, state)));
+refreshStatusOptions();
 
 if (!supabaseClient) {
   setNote(authNote, "Supabase is not configured yet. Add the project URL and anon key first.", "error");
@@ -157,21 +173,29 @@ signOutButton.addEventListener("click", async () => {
 refreshButton.addEventListener("click", loadDashboard);
 stateFilter.addEventListener("change", renderDashboard);
 statusFilter.addEventListener("change", renderDashboard);
+adminSearch.addEventListener("input", renderDashboard);
 
 document.querySelectorAll("[data-view]").forEach((button) => {
   button.addEventListener("click", () => {
     activeView = button.dataset.view;
     document.querySelectorAll("[data-view]").forEach((item) => item.classList.toggle("is-active", item === button));
-    quoteList.hidden = activeView !== "quotes";
-    applicationList.hidden = activeView !== "applications";
-    subscriptionList.hidden = activeView !== "subscriptions";
-    serviceList.hidden = activeView !== "services";
-    profileList.hidden = activeView !== "artisans";
-    reviewList.hidden = activeView !== "reviews";
-    qualityList.hidden = activeView !== "quality";
+    const viewSections = { overview: overviewList, users: userList, verification: verificationList, quotes: quoteList,
+      applications: applicationList, subscriptions: subscriptionList, services: serviceList, artisans: profileList,
+      reviews: reviewList, quality: qualityList, audit: auditList };
+    Object.entries(viewSections).forEach(([view, section]) => { section.hidden = view !== activeView; });
+    refreshStatusOptions();
     renderDashboard();
   });
 });
+
+function refreshStatusOptions() {
+  const previous = statusFilter.value;
+  const options = statusesByView[activeView] || [];
+  statusFilter.innerHTML = '<option value="all">All statuses</option>';
+  options.forEach((status) => statusFilter.add(new Option(titleCase(status), status)));
+  statusFilter.value = options.includes(previous) ? previous : "all";
+  stateFilter.closest("label").hidden = ["users", "services", "audit"].includes(activeView);
+}
 
 quoteList.addEventListener("click", async (event) => {
   const button = event.target.closest("[data-review-link]");
@@ -189,7 +213,9 @@ quoteList.addEventListener("change", async (event) => {
 applicationList.addEventListener("change", async (event) => {
   const select = event.target.closest("[data-application-status]");
   if (!select) return;
-  await updateStatus("artisan_applications", select.dataset.applicationStatus, select.value);
+  const reason = requestActionReason(`Change application status to ${select.value}`);
+  if (!reason) return renderDashboard();
+  await updateStatus("artisan_applications", select.dataset.applicationStatus, select.value, "status", reason);
 });
 
 applicationList.addEventListener("click", async (event) => {
@@ -201,7 +227,9 @@ applicationList.addEventListener("click", async (event) => {
 subscriptionList.addEventListener("change", async (event) => {
   const select = event.target.closest("[data-subscription-status]");
   if (!select) return;
-  await updateSubscriptionRequest(select.dataset.subscriptionStatus, select.value);
+  const reason = requestActionReason(`Change subscription status to ${select.value}`);
+  if (!reason) return renderDashboard();
+  await updateSubscriptionRequest(select.dataset.subscriptionStatus, select.value, reason);
 });
 
 serviceList.addEventListener("submit", async (event) => {
@@ -220,19 +248,46 @@ serviceList.addEventListener("change", async (event) => {
 profileList.addEventListener("change", async (event) => {
   const select = event.target.closest("[data-artisan-field]");
   if (!select) return;
-  await updateArtisanField(Number(select.dataset.artisanId), select.dataset.artisanField, select.value);
+  const reason = requestActionReason(`Change artisan ${select.dataset.artisanField.replaceAll("_", " ")} to ${select.value}`);
+  if (!reason) return renderDashboard();
+  await updateArtisanField(Number(select.dataset.artisanId), select.dataset.artisanField, select.value, reason);
 });
 
 reviewList.addEventListener("change", async (event) => {
   const select = event.target.closest("[data-review-visibility]");
   if (!select) return;
-  await updateStatus("artisan_reviews", select.dataset.reviewVisibility, select.value, "visibility");
+  const reason = requestActionReason(`Change review visibility to ${select.value}`);
+  if (!reason) return renderDashboard();
+  await updateStatus("artisan_reviews", select.dataset.reviewVisibility, select.value, "visibility", reason);
 });
 
 qualityList.addEventListener("change", async (event) => {
   const select = event.target.closest("[data-artisan-standing]");
   if (!select) return;
-  await updateArtisanStanding(Number(select.dataset.artisanStanding), select.value);
+  const reason = requestActionReason(`Change artisan standing to ${select.value}`);
+  if (!reason) return renderDashboard();
+  await updateArtisanStanding(Number(select.dataset.artisanStanding), select.value, reason);
+});
+
+overviewList.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-open-admin-view]");
+  if (button) document.querySelector(`[data-view="${button.dataset.openAdminView}"]`)?.click();
+});
+
+userList.addEventListener("change", async (event) => {
+  const select = event.target.closest("[data-user-status]");
+  if (!select) return;
+  const reason = requestActionReason(`Change user account status to ${select.value}`);
+  if (!reason) return renderDashboard();
+  await updateUserStatus(select.dataset.userStatus, select.value, reason);
+});
+
+verificationList.addEventListener("change", async (event) => {
+  const select = event.target.closest("[data-verification-status]");
+  if (!select) return;
+  const reason = requestActionReason(`Set identity verification to ${select.value}`);
+  if (!reason) return renderDashboard();
+  await updateApplicationVerification(select.dataset.verificationStatus, select.value, reason);
 });
 
 if (supabaseClient) {
@@ -265,7 +320,7 @@ async function loadDashboard() {
   sessionEmail.textContent = session.user.email || "Signed in";
   signOutButton.hidden = false;
 
-  const [quoteResult, applicationResult, subscriptionResult, serviceResult, artisanResult, reviewResult, qualityResult, totalUsersResult, artisanUsersResult, customerUsersResult] =
+  const [quoteResult, applicationResult, subscriptionResult, serviceResult, artisanResult, reviewResult, qualityResult, totalUsersResult, artisanUsersResult, customerUsersResult, userProfilesResult, auditResult] =
     await Promise.all([
     supabaseClient
       .from("quote_requests")
@@ -309,6 +364,8 @@ async function loadDashboard() {
     supabaseClient.from("user_profiles").select("user_id", { count: "exact", head: true }),
     supabaseClient.from("user_profiles").select("user_id", { count: "exact", head: true }).eq("role", "artisan"),
     supabaseClient.from("user_profiles").select("user_id", { count: "exact", head: true }).eq("role", "customer"),
+    supabaseClient.from("user_profiles").select("user_id, email, full_name, phone, role, account_status, status_reason, created_at, updated_at").order("created_at", { ascending: false }).limit(500),
+    supabaseClient.from("admin_audit_events").select("id, actor_user_id, actor_type, action, entity_type, entity_id, reason, created_at").order("created_at", { ascending: false }).limit(300),
   ]);
 
   if (quoteResult.error || applicationResult.error || artisanResult.error || reviewResult.error || qualityResult.error) {
@@ -339,7 +396,11 @@ async function loadDashboard() {
   artisans = artisanResult.data || [];
   reviews = reviewResult.data || [];
   qualityControls = qualityResult.data || [];
+  userProfiles = userProfilesResult.error ? [] : userProfilesResult.data || [];
+  auditEvents = auditResult.error ? [] : auditResult.data || [];
+  metricCounts = await loadExactMetricCounts();
   const userCountError = totalUsersResult.error || artisanUsersResult.error || customerUsersResult.error;
+  const automationDataError = userProfilesResult.error || auditResult.error;
   userCounts = userCountError
     ? { total: 0, artisans: 0, customers: 0 }
     : {
@@ -349,24 +410,34 @@ async function loadDashboard() {
       };
   setNote(
     dashboardNote,
-    [subscriptionResult.error, serviceResult.error, userCountError].some(Boolean)
-      ? `Loaded ${quotes.length} quotes, ${applications.length} applications, ${artisans.length} artisans, and ${reviews.length} reviews. Missing optional table: ${
-          subscriptionResult.error?.message || serviceResult.error?.message || userCountError?.message
-        }`
+    [subscriptionResult.error, serviceResult.error, userCountError, automationDataError].some(Boolean)
+      ? `Core operations loaded. Some management features are unavailable: ${
+          subscriptionResult.error?.message || serviceResult.error?.message || userCountError?.message || automationDataError?.message
+        }. Run the latest Supabase migrations, including admin-automation.sql.`
       : `Loaded ${quotes.length} quotes, ${applications.length} applications, ${subscriptionRequests.length} subscription requests, ${serviceCategories.length} services, ${artisans.length} artisans, and ${reviews.length} reviews.`,
-    [subscriptionResult.error, serviceResult.error, userCountError].some(Boolean) ? "error" : "success",
+    [subscriptionResult.error, serviceResult.error, userCountError, automationDataError].some(Boolean) ? "error" : "success",
   );
   renderDashboard();
 }
 
 function renderDashboard() {
-  const filteredQuotes = filterRows(quotes, "artisan_state");
-  const filteredApplications = filterRows(applications, "state");
-  const filteredSubscriptions = filterSubscriptionRequests(subscriptionRequests);
-  const filteredServices = filterServiceCategories(serviceCategories);
-  const filteredArtisans = filterArtisans(artisans);
-  const filteredReviews = filterRows(reviews, "artisan_state", "visibility");
-  const filteredQuality = filterRows(buildQualityRows(), "artisan_state", "standing");
+  const filteredQuotes = searchRows(filterRows(quotes, "artisan_state"));
+  const filteredApplications = searchRows(filterRows(applications, "state"));
+  const filteredSubscriptions = searchRows(filterSubscriptionRequests(subscriptionRequests));
+  const filteredServices = searchRows(filterServiceCategories(serviceCategories));
+  const filteredArtisans = searchRows(filterArtisans(artisans));
+  const filteredReviews = searchRows(filterRows(reviews, "artisan_state", "visibility"));
+  const filteredQuality = searchRows(filterRows(buildQualityRows(), "artisan_state", "standing"));
+  const filteredUsers = searchRows(userProfiles.filter((user) => statusFilter.value === "all" || user.account_status === statusFilter.value));
+  const filteredAudit = searchRows(auditEvents.filter((event) => statusFilter.value === "all" || event.actor_type === statusFilter.value));
+  const verificationRows = searchRows(applications.filter((application) =>
+    stateFilter.value === "all" || application.state === stateFilter.value,
+  ).filter((application) => statusFilter.value === "all" || application.identity_verification_status === statusFilter.value));
+
+  overviewList.innerHTML = renderOverviewQueues();
+  userList.innerHTML = filteredUsers.length ? filteredUsers.map(renderUserCard).join("") : '<article class="empty-state">No users match the current search.</article>';
+  verificationList.innerHTML = verificationRows.length ? verificationRows.map(renderVerificationCard).join("") : '<article class="empty-state">No verification cases match the current filters.</article>';
+  auditList.innerHTML = filteredAudit.length ? filteredAudit.map(renderAuditCard).join("") : '<article class="empty-state">No audit events match the current search.</article>';
 
   quoteList.innerHTML = filteredQuotes.length
     ? filteredQuotes.map(renderQuoteCard).join("")
@@ -396,6 +467,51 @@ function renderDashboard() {
 
   renderMetrics();
   renderUserCounts();
+}
+
+function searchRows(rows) {
+  const query = adminSearch.value.trim().toLowerCase();
+  if (!query) return rows;
+  return rows.filter((row) => Object.values(row || {}).some((value) =>
+    ["string", "number"].includes(typeof value) && String(value).toLowerCase().includes(query),
+  ));
+}
+
+function renderOverviewQueues() {
+  const queues = [
+    [applications.filter((item) => ["new", "reviewing"].includes(item.status)).length, "Applications awaiting review", "applications"],
+    [applications.filter((item) => item.identity_verification_status === "pending").length, "Identity checks pending", "verification"],
+    [quotes.filter((item) => item.status === "new").length, "New quote requests", "quotes"],
+    [subscriptionRequests.filter((item) => ["pending", "past_due"].includes(item.status)).length, "Subscriptions needing attention", "subscriptions"],
+    [reviews.filter((item) => item.visibility === "flagged").length, "Flagged customer reviews", "reviews"],
+    [buildQualityRows().filter((item) => item.standing === "warning").length, "Artisan quality warnings", "quality"],
+  ];
+  return `<div class="queue-grid">${queues.map(([count, label, view]) => `
+    <button class="queue-card" type="button" data-open-admin-view="${view}">
+      <strong>${count}</strong><span>${label}</span><small>${count ? "Needs attention" : "Queue clear"}</small>
+    </button>`).join("")}</div>
+    <article class="automation-card"><div><p class="eyebrow">Automation centre</p><h3>Safe workflows are active</h3>
+    <p>Registration profiles, completed-job review links, verified onboarding, low-rating warnings and audit events are prepared automatically. Sensitive approvals remain human-controlled.</p></div></article>`;
+}
+
+function renderUserCard(user) {
+  return `<article class="work-card"><div><div class="badge-row"><span class="badge gold">${escapeHtml(user.role)}</span><span class="badge">${escapeHtml(user.account_status || "active")}</span><span class="badge">Joined ${formatDate(user.created_at)}</span></div>
+    <h3>${escapeHtml(user.full_name)}</h3><p>${escapeHtml(user.email)} · ${escapeHtml(user.phone || "No phone")}</p>
+    ${user.status_reason ? `<p class="mini-note">Reason: ${escapeHtml(user.status_reason)}</p>` : ""}</div>
+    <div class="work-actions"><label><span>Account status</span><select data-user-status="${user.user_id}">${accountStatuses.map((status) => option(status, user.account_status || "active")).join("")}</select></label></div></article>`;
+}
+
+function renderVerificationCard(application) {
+  const ready = application.identity_verification_status === "verified" && application.status === "approved";
+  return `<article class="work-card"><div><div class="badge-row"><span class="badge gold">${escapeHtml(application.identity_verification_status || "pending")}</span><span class="badge">${escapeHtml(application.status)}</span><span class="badge">${application.verification_media_count || 0} private proof</span></div>
+    <h3>${escapeHtml(application.full_name)} — ${escapeHtml(application.trade)}</h3><p>${escapeHtml(application.area)}, ${escapeHtml(application.state)} · NIN ****${escapeHtml(application.nin_last4 || "----")}</p>
+    <p class="mini-note">${ready ? "Automation will create a draft profile." : "Identity approval and application approval are both required before automated profile creation."}</p></div>
+    <div class="work-actions"><label><span>Identity decision</span><select data-verification-status="${application.id}">${identityVerificationStatuses.map((status) => option(status, application.identity_verification_status || "pending")).join("")}</select></label></div></article>`;
+}
+
+function renderAuditCard(event) {
+  return `<article class="audit-card"><div class="badge-row"><span class="badge ${event.actor_type === "automation" ? "gold" : ""}">${escapeHtml(event.actor_type)}</span><span class="badge">${escapeHtml(event.action)}</span><span class="badge">${formatDate(event.created_at)}</span></div>
+    <strong>${escapeHtml(event.entity_type)} ${escapeHtml(event.entity_id || "")}</strong><p>${escapeHtml(event.reason || "Recorded automatically from a data change.")}</p></article>`;
 }
 
 function renderUserCounts() {
@@ -444,11 +560,11 @@ function filterArtisans(rows) {
 }
 
 function renderMetrics() {
-  const newQuotes = quotes.filter((quote) => quote.status === "new").length;
-  const newApplications = applications.filter((application) => application.status === "new").length;
-  const liveArtisans = artisans.filter((artisan) => artisan.profile_status === "active").length;
-  const pendingSubscriptions = subscriptionRequests.filter((request) => request.status === "pending").length;
-  const activeServices = serviceCategories.filter((service) => service.status === "active").length;
+  const newQuotes = metricCounts?.newQuotes ?? quotes.filter((quote) => quote.status === "new").length;
+  const newApplications = metricCounts?.newApplications ?? applications.filter((application) => application.status === "new").length;
+  const liveArtisans = metricCounts?.liveArtisans ?? artisans.filter((artisan) => artisan.profile_status === "active").length;
+  const pendingSubscriptions = metricCounts?.pendingSubscriptions ?? subscriptionRequests.filter((request) => request.status === "pending").length;
+  const activeServices = metricCounts?.activeServices ?? serviceCategories.filter((service) => service.status === "active").length;
   const inProgress =
     quotes.filter((quote) => ["contacted", "accepted"].includes(quote.status)).length +
     applications.filter((application) => ["reviewing", "approved"].includes(application.status)).length;
@@ -855,7 +971,7 @@ function reviewStatsFor(artisanId) {
   };
 }
 
-async function updateStatus(table, id, status, field = "status") {
+async function updateStatus(table, id, status, field = "status", reason = "") {
   setNote(dashboardNote, "Updating status...", "");
   const { error } = await supabaseClient.from(table).update({ [field]: status }).eq("id", id);
 
@@ -868,11 +984,13 @@ async function updateStatus(table, id, status, field = "status") {
   const row = collection.find((item) => item.id === id);
   if (row) row[field] = status;
 
+  if (reason) await recordAdminReason(`${field}_changed`, table, id, reason, { [field]: status });
+
   setNote(dashboardNote, "Status updated.", "success");
   renderDashboard();
 }
 
-async function updateSubscriptionRequest(requestId, status) {
+async function updateSubscriptionRequest(requestId, status, reason = "") {
   const request = subscriptionRequests.find((item) => item.id === requestId);
   if (!request) return;
 
@@ -892,6 +1010,7 @@ async function updateSubscriptionRequest(requestId, status) {
   }
 
   Object.assign(request, payload);
+  if (reason) await recordAdminReason("subscription_status_changed", "subscription_requests", requestId, reason, payload);
 
   if (request.application_code) {
     const applicationPayload = {
@@ -1032,7 +1151,7 @@ async function createArtisanFromApplication(applicationId) {
   renderDashboard();
 }
 
-async function updateArtisanField(artisanId, field, value) {
+async function updateArtisanField(artisanId, field, value, reason = "") {
   const allowedFields = [
     "profile_status",
     "plan",
@@ -1060,6 +1179,7 @@ async function updateArtisanField(artisanId, field, value) {
 
   const artisan = artisans.find((item) => item.id === artisanId);
   if (artisan) Object.assign(artisan, payload);
+  if (reason) await recordAdminReason(`${field}_changed`, "artisans", artisanId, reason, payload);
 
   if (field === "profile_status" && ["suspended", "removed"].includes(value)) {
     await updateQualityForProfileStatus(artisanId, value);
@@ -1091,7 +1211,7 @@ async function updateQualityForProfileStatus(artisanId, standing) {
   else qualityControls.push(payload);
 }
 
-async function updateArtisanStanding(artisanId, standing) {
+async function updateArtisanStanding(artisanId, standing, reason = "") {
   const row = buildQualityRows().find((item) => item.artisan_id === artisanId);
   if (!row) return;
 
@@ -1116,6 +1236,7 @@ async function updateArtisanStanding(artisanId, standing) {
   const existing = qualityControls.find((item) => item.artisan_id === artisanId);
   if (existing) Object.assign(existing, payload);
   else qualityControls.push(payload);
+  if (reason) await recordAdminReason("standing_changed", "artisan_quality_controls", artisanId, reason, payload);
 
   if (["suspended", "removed"].includes(standing)) {
     const artisan = artisans.find((item) => item.id === artisanId);
@@ -1284,6 +1405,75 @@ function coordinatesFor(state, area) {
     lat: Number((baseLat + latOffset).toFixed(7)),
     lng: Number((baseLng + lngOffset).toFixed(7)),
   };
+}
+
+async function loadExactMetricCounts() {
+  const results = await Promise.all([
+    supabaseClient.from("quote_requests").select("id", { count: "exact", head: true }).eq("status", "new"),
+    supabaseClient.from("artisan_applications").select("id", { count: "exact", head: true }).eq("status", "new"),
+    supabaseClient.from("artisans").select("id", { count: "exact", head: true }).eq("profile_status", "active"),
+    supabaseClient.from("subscription_requests").select("id", { count: "exact", head: true }).eq("status", "pending"),
+    supabaseClient.from("service_categories").select("id", { count: "exact", head: true }).eq("status", "active"),
+  ]);
+  if (results.some((result) => result.error)) return null;
+  return {
+    newQuotes: results[0].count || 0,
+    newApplications: results[1].count || 0,
+    liveArtisans: results[2].count || 0,
+    pendingSubscriptions: results[3].count || 0,
+    activeServices: results[4].count || 0,
+  };
+}
+
+function requestActionReason(action) {
+  const reason = window.prompt(`${action}\n\nEnter the operational reason for the audit log:`)?.trim();
+  if (!reason) {
+    setNote(dashboardNote, "Action cancelled. A reason is required for sensitive changes.", "error");
+    return "";
+  }
+  return window.confirm(`${action}?\n\nReason: ${reason}`) ? reason : "";
+}
+
+async function recordAdminReason(action, entityType, entityId, reason, newData = {}) {
+  const { data: { user } } = await supabaseClient.auth.getUser();
+  const event = {
+    actor_user_id: user?.id || null,
+    actor_type: "admin",
+    action,
+    entity_type: entityType,
+    entity_id: String(entityId ?? ""),
+    reason,
+    new_data: newData,
+  };
+  const { data } = await supabaseClient.from("admin_audit_events").insert(event).select("id, actor_user_id, actor_type, action, entity_type, entity_id, reason, created_at").single();
+  if (data) auditEvents.unshift(data);
+}
+
+async function updateUserStatus(userId, status, reason) {
+  setNote(dashboardNote, "Updating user account...", "");
+  const payload = { account_status: status, status_reason: reason, updated_at: new Date().toISOString() };
+  const { error } = await supabaseClient.from("user_profiles").update(payload).eq("user_id", userId);
+  if (error) return setNote(dashboardNote, error.message, "error");
+  const user = userProfiles.find((item) => item.user_id === userId);
+  if (user) Object.assign(user, payload);
+  await recordAdminReason("account_status_changed", "user_profiles", userId, reason, payload);
+  setNote(dashboardNote, "User account status updated.", "success");
+  renderDashboard();
+}
+
+async function updateApplicationVerification(applicationId, status, reason) {
+  setNote(dashboardNote, "Updating identity decision...", "");
+  const payload = {
+    identity_verification_status: status,
+    identity_verified_at: status === "verified" ? new Date().toISOString() : null,
+  };
+  const { data, error } = await supabaseClient.from("artisan_applications").update(payload).eq("id", applicationId).select("*").single();
+  if (error) return setNote(dashboardNote, error.message, "error");
+  const index = applications.findIndex((item) => item.id === applicationId);
+  if (index >= 0) applications[index] = data;
+  await recordAdminReason("identity_verification_changed", "artisan_applications", applicationId, reason, payload);
+  setNote(dashboardNote, data.status === "listed" ? "Identity verified and draft artisan profile created automatically." : "Identity decision recorded.", "success");
+  await loadDashboard();
 }
 
 function isMissingLocationColumn(error) {
