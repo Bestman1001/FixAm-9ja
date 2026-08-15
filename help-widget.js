@@ -40,7 +40,7 @@
       title: "Subscriptions and founding artisans",
       keywords: ["subscription", "payment", "plan", "monthly", "founding"],
       answer:
-        "The launch plan is to let early verified artisans build trust and visibility before strict paid subscription enforcement. Paid plans can later unlock priority placement, quote access, analytics, and higher local visibility."
+        "Artisan membership options are shown on the dedicated Artisan Plans page and inside the artisan journey. Customers do not pay to find artisans or request quotes. Founding artisans can build trust and visibility before strict paid subscription enforcement begins."
     },
     {
       title: "States, areas, and map location",

@@ -697,6 +697,7 @@ function renderArtisanProfile(items) {
                 item.subscription_status || "pending",
               )} - ${formatNaira(item.subscription_amount)}</small>
               <small>${escapeHtml(item.availability || "Taking scheduled jobs")} - ${item.service_radius || 10} mile radius</small>
+              <a href="artisan-plans.html">View artisan plans</a>
             </article>
           `,
         )
