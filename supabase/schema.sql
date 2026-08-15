@@ -48,6 +48,7 @@ alter table public.user_profiles enable row level security;
 
 drop policy if exists "Users can read own profile" on public.user_profiles;
 drop policy if exists "Users can upsert own profile" on public.user_profiles;
+drop policy if exists "Admins can read all user profiles" on public.user_profiles;
 
 create policy "Users can read own profile"
   on public.user_profiles
@@ -67,6 +68,17 @@ create table if not exists public.admin_profiles (
   email text not null,
   created_at timestamptz not null default now()
 );
+
+create policy "Admins can read all user profiles"
+  on public.user_profiles
+  for select
+  to authenticated
+  using (
+    exists (
+      select 1 from public.admin_profiles
+      where admin_profiles.user_id = auth.uid()
+    )
+  );
 
 create table if not exists public.service_categories (
   id uuid primary key default gen_random_uuid(),

@@ -82,6 +82,7 @@ const profileList = document.querySelector("#profileList");
 const reviewList = document.querySelector("#reviewList");
 const qualityList = document.querySelector("#qualityList");
 const metricsGrid = document.querySelector("#metricsGrid");
+const userCountRibbon = document.querySelector("#userCountRibbon");
 const stateFilter = document.querySelector("#stateFilter");
 const statusFilter = document.querySelector("#statusFilter");
 
@@ -92,6 +93,7 @@ let serviceCategories = [];
 let artisans = [];
 let reviews = [];
 let qualityControls = [];
+let userCounts = { total: 0, artisans: 0, customers: 0 };
 let activeView = "quotes";
 
 states.forEach((state) => stateFilter.add(new Option(state, state)));
@@ -263,7 +265,7 @@ async function loadDashboard() {
   sessionEmail.textContent = session.user.email || "Signed in";
   signOutButton.hidden = false;
 
-  const [quoteResult, applicationResult, subscriptionResult, serviceResult, artisanResult, reviewResult, qualityResult] =
+  const [quoteResult, applicationResult, subscriptionResult, serviceResult, artisanResult, reviewResult, qualityResult, totalUsersResult, artisanUsersResult, customerUsersResult] =
     await Promise.all([
     supabaseClient
       .from("quote_requests")
@@ -304,6 +306,9 @@ async function loadDashboard() {
     supabaseClient
       .from("artisan_quality_controls")
       .select("artisan_id, artisan_name, artisan_category, artisan_state, artisan_area, standing, admin_note, updated_at"),
+    supabaseClient.from("user_profiles").select("user_id", { count: "exact", head: true }),
+    supabaseClient.from("user_profiles").select("user_id", { count: "exact", head: true }).eq("role", "artisan"),
+    supabaseClient.from("user_profiles").select("user_id", { count: "exact", head: true }).eq("role", "customer"),
   ]);
 
   if (quoteResult.error || applicationResult.error || artisanResult.error || reviewResult.error || qualityResult.error) {
@@ -334,14 +339,22 @@ async function loadDashboard() {
   artisans = artisanResult.data || [];
   reviews = reviewResult.data || [];
   qualityControls = qualityResult.data || [];
+  const userCountError = totalUsersResult.error || artisanUsersResult.error || customerUsersResult.error;
+  userCounts = userCountError
+    ? { total: 0, artisans: 0, customers: 0 }
+    : {
+        total: totalUsersResult.count || 0,
+        artisans: artisanUsersResult.count || 0,
+        customers: customerUsersResult.count || 0,
+      };
   setNote(
     dashboardNote,
-    [subscriptionResult.error, serviceResult.error].some(Boolean)
+    [subscriptionResult.error, serviceResult.error, userCountError].some(Boolean)
       ? `Loaded ${quotes.length} quotes, ${applications.length} applications, ${artisans.length} artisans, and ${reviews.length} reviews. Missing optional table: ${
-          subscriptionResult.error?.message || serviceResult.error?.message
+          subscriptionResult.error?.message || serviceResult.error?.message || userCountError?.message
         }`
       : `Loaded ${quotes.length} quotes, ${applications.length} applications, ${subscriptionRequests.length} subscription requests, ${serviceCategories.length} services, ${artisans.length} artisans, and ${reviews.length} reviews.`,
-    [subscriptionResult.error, serviceResult.error].some(Boolean) ? "error" : "success",
+    [subscriptionResult.error, serviceResult.error, userCountError].some(Boolean) ? "error" : "success",
   );
   renderDashboard();
 }
@@ -382,6 +395,17 @@ function renderDashboard() {
     : `<article class="empty-state">No artisan quality records match the current filters.</article>`;
 
   renderMetrics();
+  renderUserCounts();
+}
+
+function renderUserCounts() {
+  userCountRibbon.innerHTML = [
+    [userCounts.total, "Total users"],
+    [userCounts.artisans, "Artisan accounts"],
+    [userCounts.customers, "Customer accounts"],
+  ]
+    .map(([value, label]) => `<article><strong>${Number(value).toLocaleString()}</strong><span>${label}</span></article>`)
+    .join("");
 }
 
 function filterServiceCategories(rows) {

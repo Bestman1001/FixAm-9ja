@@ -6,7 +6,7 @@
     <title>FixAm 9ja Admin</title>
     <meta name="robots" content="noindex" />
     <link rel="icon" href="fixam-logo.jpg" />
-    <link rel="stylesheet" href="admin.css?v=20260814-mobile" />
+    <link rel="stylesheet" href="admin.css?v=20260815-user-counts" />
   </head>
   <body>
     <header class="admin-topbar">
@@ -100,6 +100,18 @@
           </div>
         </div>
 
+        <section class="user-count-ribbon" aria-labelledby="userCountHeading">
+          <div class="user-count-intro">
+            <p class="eyebrow">Registered community</p>
+            <h2 id="userCountHeading">User overview</h2>
+          </div>
+          <div class="user-count-items" id="userCountRibbon" aria-live="polite">
+            <article><strong>0</strong><span>Total users</span></article>
+            <article><strong>0</strong><span>Artisan accounts</span></article>
+            <article><strong>0</strong><span>Customer accounts</span></article>
+          </div>
+        </section>
+
         <div class="metrics-grid" id="metricsGrid">
           <article><strong>0</strong><span>New quotes</span></article>
           <article><strong>0</strong><span>New applications</span></article>
@@ -133,7 +145,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="location-data.js?v=20260814-map"></script>
     <script src="supabase-config.js?v=20260814"></script>
-    <script src="admin.js?v=20260814-lga"></script>
+    <script src="admin.js?v=20260815-user-counts"></script>
   </body>
 </html>
 
