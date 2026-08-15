@@ -6,8 +6,8 @@
     <title>FixAm 9ja Accounts</title>
     <meta name="robots" content="noindex" />
     <link rel="icon" href="fixam-logo.jpg" />
-    <link rel="stylesheet" href="account.css?v=20260814-mobile" />
-    <link rel="stylesheet" href="help-widget.css?v=20260814" />
+    <link rel="stylesheet" href="account.css?v=20260815-app-ready" />
+    <link rel="stylesheet" href="help-widget.css?v=20260815-app-ready" />
   </head>
   <body>
     <header class="account-topbar">
@@ -119,22 +119,22 @@
         <p class="form-note" id="dashboardNote">Loading account...</p>
 
         <div class="account-grid">
-          <section class="account-card">
+          <section class="account-card" data-account-view="customer">
             <h3>Your quote requests</h3>
             <div class="record-list" id="quoteList"></div>
           </section>
-          <section class="account-card">
+          <section class="account-card" data-account-view="artisan">
             <div class="card-title-row">
               <h3>Quote leads</h3>
               <span class="notification-badge" id="quoteLeadBadge">0</span>
             </div>
             <div class="record-list" id="quoteLeadList"></div>
           </section>
-          <section class="account-card">
+          <section class="account-card" data-account-view="artisan">
             <h3>Artisan applications</h3>
             <div class="record-list" id="applicationList"></div>
           </section>
-          <section class="account-card">
+          <section class="account-card" data-account-view="artisan">
             <h3>Artisan profile</h3>
             <div class="record-list" id="artisanProfile"></div>
             <button class="secondary-action" type="button" id="claimProfileButton">Claim matching phone profile</button>
@@ -175,7 +175,7 @@
               <button class="primary-action" type="submit">Save artisan profile</button>
             </form>
           </section>
-          <section class="account-card">
+          <section class="account-card" data-account-view="artisan">
             <h3>Portfolio uploads</h3>
             <label>
               <span>Images/videos</span>
@@ -202,8 +202,8 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="location-data.js?v=20260814-map"></script>
     <script src="supabase-config.js?v=20260814"></script>
-    <script src="account.js?v=20260814-lga"></script>
-    <script src="help-widget.js?v=20260814-lga"></script>
+    <script src="account.js?v=20260815-app-ready"></script>
+    <script src="help-widget.js?v=20260815-app-ready"></script>
   </body>
 </html>
 

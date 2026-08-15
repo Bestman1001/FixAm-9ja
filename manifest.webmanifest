@@ -1,0 +1,13 @@
+{
+  "name": "FixAm 9ja",
+  "short_name": "FixAm 9ja",
+  "description": "Find trusted Nigerian artisans near you.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4f8f6",
+  "theme_color": "#064c48",
+  "icons": [
+    { "src": "fixam-logo.jpg", "sizes": "1890x1890", "type": "image/jpeg", "purpose": "any" }
+  ]
+}

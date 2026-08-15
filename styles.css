@@ -465,6 +465,36 @@ textarea {
   margin-bottom: 28px;
 }
 
+.mobile-view-switch {
+  display: none;
+}
+
+.loading-card {
+  min-height: 130px;
+  overflow: hidden;
+}
+
+.loading-line {
+  display: block;
+  width: 72%;
+  height: 14px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #edf3f0 25%, #f8fbfa 50%, #edf3f0 75%);
+  background-size: 200% 100%;
+  animation: loading-shimmer 1.3s infinite linear;
+}
+
+.loading-line.wide { width: 92%; height: 20px; }
+.loading-line.short { width: 48%; }
+
+@keyframes loading-shimmer {
+  to { background-position: -200% 0; }
+}
+
+.empty-marketplace .secondary-action {
+  width: fit-content;
+}
+
 .section-heading > div {
   display: grid;
   gap: 8px;
@@ -1186,6 +1216,35 @@ footer a:hover {
     height: auto;
   }
 
+  .mobile-view-switch {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--line);
+    background: white;
+  }
+
+  .mobile-view-switch button {
+    min-height: 42px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--soft);
+    color: var(--deep);
+    font-weight: 900;
+  }
+
+  .mobile-view-switch button.is-active {
+    border-color: var(--deep);
+    background: var(--deep);
+    color: white;
+  }
+
+  .map-and-results.is-list-view .map-wrap,
+  .map-and-results.is-map-view .results-panel {
+    display: none;
+  }
+
   .map-wrap,
   #map {
     min-height: 430px;
@@ -1247,8 +1306,11 @@ footer a:hover {
     min-height: 44px;
   }
 
+  .topbar .nav-links {
+    display: none;
+  }
+
   .search-panel,
-  .state-grid,
   .category-grid,
   .trust-grid,
   .plans-grid,
@@ -1345,7 +1407,7 @@ footer a:hover {
   }
 
   h1 {
-    font-size: clamp(2.35rem, 12vw, 3.5rem);
+    font-size: clamp(2.25rem, 10.5vw, 3rem);
     line-height: 1;
   }
 
@@ -1394,9 +1456,32 @@ footer a:hover {
     grid-template-columns: 1fr;
   }
 
+  .state-grid {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    padding-bottom: 8px;
+  }
+
+  .state-card {
+    flex: 0 0 min(78vw, 280px);
+    scroll-snap-align: start;
+  }
+
   .card-actions button,
   .profile-actions button {
     width: 100%;
+    min-height: 48px;
+  }
+
+  .join-step-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .join-step-actions button:only-child,
+  .join-step-actions #joinNextButton:not([hidden]) {
     min-height: 48px;
   }
 
@@ -1418,6 +1503,47 @@ footer a:hover {
     padding-bottom: max(24px, env(safe-area-inset-bottom));
     padding-left: max(16px, env(safe-area-inset-left));
   }
+}
+
+.join-progress {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--soft);
+}
+
+.join-progress > span {
+  color: var(--green);
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.join-progress-track {
+  height: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #dce8e3;
+}
+
+.join-progress-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--green);
+  transition: width 180ms ease;
+}
+
+.join-step-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+[data-join-step][hidden] {
+  display: none !important;
 }
 
 @media (max-width: 380px) {

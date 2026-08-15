@@ -650,7 +650,7 @@ textarea:focus {
   }
 
   .intro-panel h1 {
-    font-size: clamp(2.1rem, 13vw, 3.4rem);
+    font-size: clamp(2rem, 10.5vw, 2.8rem);
   }
 
   .session-actions button,
@@ -731,6 +731,22 @@ textarea:focus {
 
   .dashboard-panel {
     padding-bottom: max(18px, env(safe-area-inset-bottom));
+  }
+
+  .session-actions {
+    display: flex;
+    align-items: center;
+    flex-flow: row wrap;
+  }
+
+  .session-actions a,
+  .session-actions button {
+    width: auto;
+    flex: 0 0 auto;
+  }
+
+  .session-actions span {
+    flex: 1 1 140px;
   }
 }
 

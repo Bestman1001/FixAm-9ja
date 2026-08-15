@@ -17,8 +17,8 @@
       integrity="sha256-p4NxAoJBhIINfQJQhv/0Xz4dU1Y3rI6QGzV3G4rjvXw="
       crossorigin=""
     />
-    <link rel="stylesheet" href="styles.css?v=20260815-services" />
-    <link rel="stylesheet" href="help-widget.css?v=20260814" />
+    <link rel="stylesheet" href="styles.css?v=20260815-app-ready" />
+    <link rel="stylesheet" href="help-widget.css?v=20260815-app-ready" />
   </head>
   <body>
     <header class="topbar">
@@ -89,7 +89,12 @@
             </label>
           </form>
 
-          <div class="map-and-results">
+          <div class="mobile-view-switch" aria-label="Marketplace view">
+            <button class="is-active" type="button" data-marketplace-view="list" aria-pressed="true">List</button>
+            <button type="button" data-marketplace-view="map" aria-pressed="false">Map</button>
+          </div>
+
+          <div class="map-and-results is-list-view" id="marketplaceViews">
             <div class="map-wrap">
               <div id="map" aria-label="Artisan location map"></div>
               <div class="map-status" id="mapStatus">Showing verified artisans near Lagos</div>
@@ -167,6 +172,11 @@
           <a class="secondary-action" href="artisan-plans.html">View artisan plans</a>
         </div>
         <form class="join-form" id="joinForm">
+          <div class="join-progress full-span" aria-label="Artisan application progress">
+            <span id="joinStepLabel">Step 1 of 4</span>
+            <div class="join-progress-track"><span id="joinProgressBar"></span></div>
+            <strong id="joinStepTitle">Your account</strong>
+          </div>
           <label>
             <span>Full name</span>
             <input id="joinName" type="text" autocomplete="name" placeholder="e.g. Chinedu Okafor" required />
@@ -227,7 +237,11 @@
             <input id="joinNinConsent" type="checkbox" required />
             <span>I agree that FixAm 9ja may verify my identity using my NIN and selfie/liveness proof for marketplace trust and safety.</span>
           </label>
-          <button class="primary-action large" type="submit">Create artisan profile</button>
+          <div class="join-step-actions full-span">
+            <button class="secondary-action" id="joinBackButton" type="button" hidden>Back</button>
+            <button class="primary-action" id="joinNextButton" type="button">Continue</button>
+            <button class="primary-action large" id="joinSubmitButton" type="submit" hidden>Create artisan profile</button>
+          </div>
           <p class="form-note" id="joinNote">Founding artisans can apply now. Verified early artisans get free launch visibility before paid subscriptions begin.</p>
         </form>
       </section>
@@ -300,8 +314,8 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="location-data.js?v=20260814-map"></script>
     <script src="supabase-config.js?v=20260814"></script>
-    <script src="app.js?v=20260815-services"></script>
-    <script src="help-widget.js?v=20260814-lga"></script>
+    <script src="app.js?v=20260815-app-ready"></script>
+    <script src="help-widget.js?v=20260815-app-ready"></script>
   </body>
 </html>
 

@@ -119,7 +119,17 @@
       </div>
     `;
 
-    document.body.append(button, panel);
+    const mobileNav = document.createElement("nav");
+    mobileNav.className = "mobile-app-nav";
+    mobileNav.setAttribute("aria-label", "Mobile navigation");
+    mobileNav.innerHTML = `
+      <a href="index.html">Home</a>
+      <a href="index.html#marketplace">Find</a>
+      <button type="button" data-open-mobile-help>Help</button>
+      <a href="account.html">Account</a>
+    `;
+
+    document.body.append(button, panel, mobileNav);
 
     const closeButton = panel.querySelector(".fixam-help-close");
     const search = panel.querySelector(".fixam-help-search");
@@ -147,6 +157,12 @@
       if (!panel.hidden) search.focus();
     });
 
+    mobileNav.querySelector("[data-open-mobile-help]").addEventListener("click", () => {
+      panel.hidden = false;
+      button.setAttribute("aria-expanded", "true");
+      search.focus();
+    });
+
     closeButton.addEventListener("click", () => {
       panel.hidden = true;
       button.setAttribute("aria-expanded", "false");
@@ -154,6 +170,16 @@
     });
 
     search.addEventListener("input", () => renderAnswer(answer, findTopic(search.value)));
+
+    if (!document.querySelector('link[rel="manifest"]')) {
+      const manifest = document.createElement("link");
+      manifest.rel = "manifest";
+      manifest.href = "manifest.webmanifest";
+      document.head.appendChild(manifest);
+    }
+    if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+      navigator.serviceWorker.register("sw.js").catch(() => {});
+    }
   }
 
   if (document.readyState === "loading") {

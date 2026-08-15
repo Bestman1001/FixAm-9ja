@@ -294,6 +294,7 @@ async function loadDashboard(note = null) {
   setNote(dashboardNote, "Loading account...", "");
   currentProfile = await loadProfile();
   fillProfileForm();
+  applyAccountRoleView();
 
   const [quotesResult, applicationsResult, artisansResult, mediaResult] = await Promise.all([
     supabaseClient
@@ -727,6 +728,17 @@ function fillArtisanProfileForm() {
   document.querySelector("#artisanAvailability").value = ownedArtisan.availability || "Taking scheduled jobs";
   document.querySelector("#artisanServiceRadius").value = ownedArtisan.service_radius || 10;
   document.querySelector("#artisanBio").value = ownedArtisan.bio || "";
+}
+
+function applyAccountRoleView() {
+  const role = currentProfile?.role === "artisan" ? "artisan" : "customer";
+  document.body.dataset.accountRole = role;
+  document.querySelectorAll("[data-account-view]").forEach((section) => {
+    section.hidden = section.dataset.accountView !== role;
+  });
+  document.querySelector("#dashboardTitle").textContent = `${role === "artisan" ? "Artisan workspace" : "Customer workspace"} — ${
+    currentProfile?.full_name || "FixAm user"
+  }`;
 }
 
 function isMissingLocationColumn(error) {

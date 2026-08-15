@@ -98,7 +98,10 @@ const demoArtisans = [
   portfolio: portfolioFor(category),
 }));
 
-let artisans = [...demoArtisans];
+// Production listings are loaded from Supabase. Never render sample profiles while live data is loading.
+let artisans = [];
+let marketplaceLoading = true;
+let marketplaceLoadError = "";
 let qoreIdRestoreTimer = null;
 
 function serviceSkills(category) {
@@ -194,6 +197,7 @@ const artisanList = document.querySelector("#artisanList");
 const resultCount = document.querySelector("#resultCount");
 const activeRegion = document.querySelector("#activeRegion");
 const mapStatus = document.querySelector("#mapStatus");
+const marketplaceViews = document.querySelector("#marketplaceViews");
 const profileModal = document.querySelector("#profileModal");
 const quoteModal = document.querySelector("#quoteModal");
 const profileContent = document.querySelector("#profileContent");
@@ -208,8 +212,14 @@ const joinArea = document.querySelector("#joinArea");
 const joinTown = document.querySelector("#joinTown");
 const joinNote = document.querySelector("#joinNote");
 const joinSubmitButton = joinForm.querySelector("button[type='submit']");
+const joinNextButton = document.querySelector("#joinNextButton");
+const joinBackButton = document.querySelector("#joinBackButton");
+const joinStepLabel = document.querySelector("#joinStepLabel");
+const joinStepTitle = document.querySelector("#joinStepTitle");
+const joinProgressBar = document.querySelector("#joinProgressBar");
 let selectedQuoteArtisan = null;
 let showAllServices = false;
+let joinStep = 1;
 
 const supabaseSettings = window.FIXAM_SUPABASE || {};
 const supabaseClient =
@@ -239,6 +249,7 @@ document.querySelector("#stateGrid").innerHTML = states
 
 renderServiceCatalog();
 renderJoinTradeOptions();
+initializeJoinSteps();
 
 const map = L.map("map", { scrollWheelZoom: false }).setView(originByState[stateFilter.value], 11);
 L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -452,6 +463,18 @@ function filteredArtisans() {
 }
 
 function renderCards(matches) {
+  if (marketplaceLoading) {
+    resultCount.textContent = "Loading artisans";
+    artisanList.innerHTML = `
+      <article class="artisan-card loading-card" aria-busy="true">
+        <span class="loading-line wide"></span><span class="loading-line"></span><span class="loading-line short"></span>
+      </article>
+      <article class="artisan-card loading-card" aria-hidden="true">
+        <span class="loading-line wide"></span><span class="loading-line"></span><span class="loading-line short"></span>
+      </article>`;
+    return;
+  }
+
   resultCount.textContent = `${matches.length} artisan${matches.length === 1 ? "" : "s"}`;
   activeRegion.textContent = `${stateFilter.value}${areaFilter.value !== "All" ? `, ${areaFilter.value}` : ""}`;
 
@@ -483,8 +506,52 @@ function renderCards(matches) {
           </article>
         `,
       )
-      .join("") || `<article class="artisan-card"><h3>No matches yet</h3><p>Try another service or LGA/Area Council.</p></article>`;
+      .join("") || `<article class="artisan-card empty-marketplace"><h3>${marketplaceLoadError ? "Listings unavailable" : "No verified artisans found"}</h3><p>${
+        marketplaceLoadError
+          ? "We could not load live listings. Check your connection and refresh the page."
+          : "Try another service or LGA/Area Council. New verified artisans are added as coverage grows."
+      }</p>${marketplaceLoadError ? '<button class="secondary-action" type="button" data-retry-marketplace>Retry</button>' : ""}</article>`;
 }
+
+function initializeJoinSteps() {
+  const stepByField = {
+    joinName: 1, joinEmail: 1, joinPhone: 1,
+    joinTrade: 2, joinState: 2, joinArea: 2, joinTown: 2, joinExperience: 2, joinDetails: 2,
+    joinPlan: 3, joinMedia: 3,
+    joinNin: 4, joinSelfie: 4, joinNinConsent: 4,
+  };
+  Object.entries(stepByField).forEach(([id, step]) => {
+    document.querySelector(`#${id}`)?.closest("label")?.setAttribute("data-join-step", String(step));
+  });
+  showJoinStep(1);
+}
+
+function showJoinStep(step) {
+  const titles = ["Your account", "Business and location", "Plan and portfolio", "Identity verification"];
+  joinStep = Math.min(4, Math.max(1, step));
+  joinForm.querySelectorAll("[data-join-step]").forEach((field) => {
+    field.hidden = Number(field.dataset.joinStep) !== joinStep;
+  });
+  joinStepLabel.textContent = `Step ${joinStep} of 4`;
+  joinStepTitle.textContent = titles[joinStep - 1];
+  joinProgressBar.style.width = `${joinStep * 25}%`;
+  joinBackButton.hidden = joinStep === 1;
+  joinNextButton.hidden = joinStep === 4;
+  joinSubmitButton.hidden = joinStep !== 4;
+}
+
+function currentJoinStepIsValid() {
+  const fields = [...joinForm.querySelectorAll(`[data-join-step="${joinStep}"] input, [data-join-step="${joinStep}"] select, [data-join-step="${joinStep}"] textarea`)];
+  const invalid = fields.find((field) => !field.checkValidity());
+  if (invalid) invalid.reportValidity();
+  return !invalid;
+}
+
+joinNextButton.addEventListener("click", () => {
+  if (currentJoinStepIsValid()) showJoinStep(joinStep + 1);
+});
+
+joinBackButton.addEventListener("click", () => showJoinStep(joinStep - 1));
 
 function renderMap(matches) {
   markers.forEach((marker) => marker.remove());
@@ -532,9 +599,11 @@ function renderMap(matches) {
     map.setView(selectedState.center, 11);
   }
 
-  mapStatus.textContent = `Showing ${matches.length} verified artisan${matches.length === 1 ? "" : "s"} near ${
-    activeOriginLabel || stateFilter.value
-  }`;
+  mapStatus.textContent = marketplaceLoading
+    ? "Loading verified artisan listings..."
+    : `Showing ${matches.length} verified artisan${matches.length === 1 ? "" : "s"} near ${
+        activeOriginLabel || stateFilter.value
+      }`;
   animateLgaFocus = false;
 }
 
@@ -569,6 +638,20 @@ areaFilter.addEventListener("change", () => {
 serviceSearch.addEventListener("input", render);
 sortFilter.addEventListener("change", render);
 
+document.querySelectorAll("[data-marketplace-view]").forEach((button) => {
+  button.addEventListener("click", () => {
+    const view = button.dataset.marketplaceView;
+    marketplaceViews.classList.toggle("is-map-view", view === "map");
+    marketplaceViews.classList.toggle("is-list-view", view === "list");
+    document.querySelectorAll("[data-marketplace-view]").forEach((item) => {
+      const active = item === button;
+      item.classList.toggle("is-active", active);
+      item.setAttribute("aria-pressed", String(active));
+    });
+    if (view === "map") requestAnimationFrame(() => map.invalidateSize());
+  });
+});
+
 toggleServicesButton.addEventListener("click", () => {
   showAllServices = !showAllServices;
   renderServiceCatalog();
@@ -580,6 +663,15 @@ categoryGrid.addEventListener("click", (event) => {
   serviceSearch.value = serviceCard.dataset.serviceCategory;
   render();
   document.querySelector("#marketplace").scrollIntoView({ behavior: "smooth", block: "start" });
+});
+
+artisanList.addEventListener("click", async (event) => {
+  if (!event.target.closest("[data-retry-marketplace]")) return;
+  marketplaceLoading = true;
+  marketplaceLoadError = "";
+  render();
+  await Promise.all([loadRealArtisans(), loadTrustSignals()]);
+  render();
 });
 
 document.querySelectorAll("[data-state]").forEach((button) => {
@@ -894,6 +986,7 @@ joinForm.addEventListener("submit", async (event) => {
   joinSubmitButton.textContent = "Application sent";
   joinForm.reset();
   syncJoinAreas();
+  showJoinStep(1);
 });
 
 async function verifyNinForApplication({ applicationCode, applicantEmail, fullName, phone, nin, selfieMediaPaths }) {
@@ -971,7 +1064,12 @@ function subscriptionAmountForPlan(plan) {
 }
 
 async function loadRealArtisans() {
-  if (!supabaseClient) return;
+  if (!supabaseClient) {
+    artisans = [];
+    marketplaceLoading = false;
+    marketplaceLoadError = "Marketplace connection is not configured.";
+    return;
+  }
 
   const legacyColumns = "id, state, area, category, business_name, lat, lng, rating, jobs, response_time, plan, subscription_plan, subscription_status, bio, skills, availability, service_radius, completed_jobs, verification_status, verification_checks, portfolio_items, profile_status";
   const fetchArtisans = (columns) => supabaseClient
@@ -989,6 +1087,8 @@ async function loadRealArtisans() {
 
   if (error) {
     artisans = [];
+    marketplaceLoading = false;
+    marketplaceLoadError = error.message || "Unable to load listings.";
     syncAreas();
     renderServiceCatalog();
     return;
@@ -1026,6 +1126,9 @@ async function loadRealArtisans() {
       : ["NIN verified", subscriptionAccessLabel(artisan.subscription_status)],
     portfolio: artisan.portfolio_items?.length ? artisan.portfolio_items : portfolioFor(artisan.category),
   }));
+
+  marketplaceLoading = false;
+  marketplaceLoadError = "";
 
   syncAreas();
   renderServiceCatalog();
