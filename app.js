@@ -188,6 +188,8 @@ const areaFilter = document.querySelector("#areaFilter");
 const serviceSearch = document.querySelector("#serviceSearch");
 const sortFilter = document.querySelector("#sortFilter");
 const categoryGrid = document.querySelector("#categoryGrid");
+const popularServicesNote = document.querySelector("#popularServicesNote");
+const toggleServicesButton = document.querySelector("#toggleServicesButton");
 const artisanList = document.querySelector("#artisanList");
 const resultCount = document.querySelector("#resultCount");
 const activeRegion = document.querySelector("#activeRegion");
@@ -207,6 +209,7 @@ const joinTown = document.querySelector("#joinTown");
 const joinNote = document.querySelector("#joinNote");
 const joinSubmitButton = joinForm.querySelector("button[type='submit']");
 let selectedQuoteArtisan = null;
+let showAllServices = false;
 
 const supabaseSettings = window.FIXAM_SUPABASE || {};
 const supabaseClient =
@@ -300,17 +303,64 @@ function syncJoinAreas() {
 }
 
 function renderServiceCatalog() {
-  categoryGrid.innerHTML = categories
+  const stateName = stateFilter.value || defaultStateName;
+  const areaName = areaFilter.value || "All";
+  const locationLabel = areaName === "All" ? stateName : `${areaName}, ${stateName}`;
+  const localArtisans = artisans.filter(
+    (artisan) =>
+      artisan.state === stateName &&
+      (areaName === "All" || artisan.area === areaName) &&
+      !["removed", "suspended"].includes(qualityByArtisanId.get(artisan.id)?.standing),
+  );
+  const activityByCategory = localArtisans.reduce((activity, artisan) => {
+    const key = String(artisan.category).toLowerCase();
+    const current = activity.get(key) || { providers: 0, jobs: 0 };
+    current.providers += 1;
+    current.jobs += Number(artisan.completed || artisan.jobs || 0);
+    activity.set(key, current);
+    return activity;
+  }, new Map());
+  const rankedCategories = categories
+    .map((category, index) => ({
+      ...category,
+      index,
+      activity: activityByCategory.get(category.name.toLowerCase()) || { providers: 0, jobs: 0 },
+    }))
+    .sort((a, b) => b.activity.jobs - a.activity.jobs || b.activity.providers - a.activity.providers || a.index - b.index);
+  const visibleCategories = showAllServices ? rankedCategories : rankedCategories.slice(0, 8);
+
+  popularServicesNote.textContent = localArtisans.length
+    ? `Ranked for ${locationLabel} using active marketplace availability and completed-job activity.`
+    : `Showing available service categories for ${locationLabel}. Rankings will update as marketplace activity grows.`;
+  toggleServicesButton.hidden = rankedCategories.length <= 8;
+  toggleServicesButton.textContent = showAllServices ? "Show popular services" : "View all services";
+  toggleServicesButton.setAttribute("aria-expanded", String(showAllServices));
+
+  categoryGrid.innerHTML = visibleCategories
     .map(
-      ({ name, description }) => `
-        <article class="category-card">
+      ({ name, description, activity }) => `
+        <button class="category-card" type="button" data-service-category="${escapeHtml(name)}">
           <span class="category-icon">${escapeHtml(name.slice(0, 2))}</span>
-          <h3>${escapeHtml(name)}</h3>
+          <span class="service-signal">${activity.providers ? `Available in ${escapeHtml(locationLabel)}` : "Service category"}</span>
+          <h3>${escapeHtml(customerServiceLabel(name))}</h3>
           <p>${escapeHtml(description)}</p>
-        </article>
+          <span class="service-card-action">Find artisans <span aria-hidden="true">→</span></span>
+        </button>
       `,
     )
     .join("");
+}
+
+function customerServiceLabel(name) {
+  const labels = {
+    "AC Technician": "AC repair and installation",
+    "Appliance Repair Technician": "Home appliance repair",
+    "Phone Repair Technician": "Phone and tablet repair",
+    "Computer Technician": "Computer and laptop repair",
+    "Generator Technician": "Generator repair and servicing",
+    "Refrigeration Technician": "Fridge and freezer repair",
+  };
+  return labels[name] || name;
 }
 
 function renderJoinTradeOptions() {
@@ -501,6 +551,7 @@ window.addEventListener("resize", () => {
 
 stateFilter.addEventListener("change", () => {
   syncAreas();
+  renderServiceCatalog();
   render();
 });
 
@@ -512,10 +563,24 @@ areaFilter.addEventListener("change", () => {
   saveAreaName(areaFilter.value);
   setSelectedOrigin();
   animateLgaFocus = areaFilter.value !== "All";
+  renderServiceCatalog();
   render();
 });
 serviceSearch.addEventListener("input", render);
 sortFilter.addEventListener("change", render);
+
+toggleServicesButton.addEventListener("click", () => {
+  showAllServices = !showAllServices;
+  renderServiceCatalog();
+});
+
+categoryGrid.addEventListener("click", (event) => {
+  const serviceCard = event.target.closest("[data-service-category]");
+  if (!serviceCard) return;
+  serviceSearch.value = serviceCard.dataset.serviceCategory;
+  render();
+  document.querySelector("#marketplace").scrollIntoView({ behavior: "smooth", block: "start" });
+});
 
 document.querySelectorAll("[data-state]").forEach((button) => {
   button.addEventListener("click", () => {
@@ -523,6 +588,7 @@ document.querySelectorAll("[data-state]").forEach((button) => {
     joinState.value = button.dataset.state;
     syncAreas();
     syncJoinAreas();
+    renderServiceCatalog();
     render();
     document.querySelector("#marketplace").scrollIntoView({ behavior: "smooth" });
   });
@@ -924,6 +990,7 @@ async function loadRealArtisans() {
   if (error) {
     artisans = [];
     syncAreas();
+    renderServiceCatalog();
     return;
   }
 
@@ -961,6 +1028,7 @@ async function loadRealArtisans() {
   }));
 
   syncAreas();
+  renderServiceCatalog();
 }
 
 function subscriptionAccessLabel(status) {

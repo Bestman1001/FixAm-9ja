@@ -465,6 +465,18 @@ textarea {
   margin-bottom: 28px;
 }
 
+.section-heading > div {
+  display: grid;
+  gap: 8px;
+}
+
+.section-note {
+  max-width: 720px;
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
 .state-grid,
 .category-grid,
 .trust-grid,
@@ -482,6 +494,40 @@ textarea {
   background: white;
   border: 1px solid var(--line);
   border-radius: 8px;
+}
+
+button.category-card {
+  display: grid;
+  width: 100%;
+  min-height: 230px;
+  align-content: start;
+  gap: 8px;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+button.category-card:hover,
+button.category-card:focus-visible {
+  border-color: rgba(11, 143, 100, 0.55);
+  box-shadow: 0 14px 34px rgba(11, 143, 100, 0.12);
+  transform: translateY(-2px);
+}
+
+.service-signal {
+  color: #0b8f64;
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.service-card-action {
+  align-self: end;
+  margin-top: auto;
+  color: var(--deep);
+  font-weight: 900;
 }
 
 .state-card button {
