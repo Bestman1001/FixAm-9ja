@@ -22,9 +22,13 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const rawBody = await req.text();
+    if (!req.headers.get("x-verifyme-signature") && isWebhookReadinessProbe(rawBody)) {
+      return json({ ok: true, service: "FixAm 9ja QoreID Collection webhook" });
+    }
+
     const webhookSecret = Deno.env.get("QOREID_WEBHOOK_SECRET") || "";
     if (!webhookSecret) return json({ error: "Webhook secret is not configured." }, 503);
-    const rawBody = await req.text();
     if (!await hasValidWebhookSignature(req, rawBody, webhookSecret)) {
       return json({ error: "Invalid QoreID webhook signature." }, 401);
     }
@@ -130,6 +134,20 @@ Deno.serve(async (req) => {
     return json({ error: error instanceof Error ? error.message : "Webhook handling failed." }, 500);
   }
 });
+
+function isWebhookReadinessProbe(rawBody: string) {
+  const value = rawBody.trim();
+  if (!value || value === "{}") return true;
+
+  try {
+    const payload = JSON.parse(value);
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) return false;
+    const source = payload as Record<string, unknown>;
+    return !source.event && !source.event_type && !source.data && !source.reference;
+  } catch (_error) {
+    return false;
+  }
+}
 
 async function hasValidWebhookSignature(req: Request, rawBody: string, secret: string) {
   const supplied = (req.headers.get("x-verifyme-signature") || "").trim().toLowerCase();
