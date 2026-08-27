@@ -2,7 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": Deno.env.get("APP_ORIGIN") || "https://bestman1001.github.io",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-fixam-webhook-secret",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-verifyme-signature",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
@@ -24,11 +24,12 @@ Deno.serve(async (req) => {
   try {
     const webhookSecret = Deno.env.get("QOREID_WEBHOOK_SECRET") || "";
     if (!webhookSecret) return json({ error: "Webhook secret is not configured." }, 503);
-    if (!hasValidWebhookSecret(req, webhookSecret)) {
-      return json({ error: "Unauthorized webhook." }, 401);
+    const rawBody = await req.text();
+    if (!await hasValidWebhookSignature(req, rawBody, webhookSecret)) {
+      return json({ error: "Invalid QoreID webhook signature." }, 401);
     }
 
-    const body = await req.json().catch(() => ({}));
+    const body = parseWebhookBody(rawBody);
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
@@ -72,7 +73,7 @@ Deno.serve(async (req) => {
       provider: "qoreid",
       provider_reference: reference,
       status,
-      message: providerMessage || `QoreID webhook marked verification as ${status}.`,
+      message: providerMessage || `QoreID Collection webhook marked verification as ${status}.`,
       response_summary: summarizeWebhook(body),
     });
 
@@ -130,10 +131,35 @@ Deno.serve(async (req) => {
   }
 });
 
-function hasValidWebhookSecret(req: Request, expected: string) {
-  const authorization = req.headers.get("authorization") || "";
-  const headerSecret = req.headers.get("x-fixam-webhook-secret") || "";
-  return authorization === `Bearer ${expected}` || headerSecret === expected;
+async function hasValidWebhookSignature(req: Request, rawBody: string, secret: string) {
+  const supplied = (req.headers.get("x-verifyme-signature") || "").trim().toLowerCase();
+  if (!/^[a-f0-9]{128}$/.test(supplied)) return false;
+
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-512" },
+    false,
+    ["sign"],
+  );
+  const digest = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(rawBody));
+  const expected = Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+
+  let difference = 0;
+  for (let index = 0; index < expected.length; index += 1) {
+    difference |= expected.charCodeAt(index) ^ supplied.charCodeAt(index);
+  }
+  return difference === 0;
+}
+
+function parseWebhookBody(rawBody: string) {
+  try {
+    return JSON.parse(rawBody);
+  } catch (_error) {
+    return {};
+  }
 }
 
 async function findApplicationByReferences(supabaseAdmin: SupabaseAdmin, references: string[]) {
@@ -321,8 +347,30 @@ function summarizeWebhook(payload: unknown) {
   return {
     references: uniqueStrings(extractReferenceCandidates(payload)).slice(0, 8),
     statuses: uniqueStrings(extractStatusCandidates(payload)).slice(0, 8),
+    product_codes: uniqueStrings(extractProductCodeCandidates(payload)).slice(0, 8),
     received_at: new Date().toISOString(),
   };
+}
+
+function extractProductCodeCandidates(payload: unknown): string[] {
+  const candidates: string[] = [];
+  const walk = (value: unknown, depth = 0) => {
+    if (!value || depth > 4) return;
+    if (Array.isArray(value)) {
+      value.forEach((item) => walk(item, depth + 1));
+      return;
+    }
+    if (typeof value !== "object") return;
+
+    const source = value as Record<string, unknown>;
+    ["productCode", "product_code", "serviceCode", "service_code"].forEach((key) => {
+      if (typeof source[key] === "string") candidates.push(String(source[key]));
+    });
+    Object.values(source).forEach((item) => walk(item, depth + 1));
+  };
+
+  walk(payload);
+  return candidates;
 }
 
 function uniqueStrings(values: string[]) {

@@ -376,16 +376,17 @@ create policy "Admins can read identity verification attempts"
 alter table public.artisan_applications enable row level security;
 
 drop policy if exists "Anyone can create artisan applications" on public.artisan_applications;
+drop policy if exists "Authenticated users create own artisan applications" on public.artisan_applications;
 
-create policy "Anyone can create artisan applications"
+create policy "Authenticated users create own artisan applications"
   on public.artisan_applications
   for insert
-  to anon, authenticated
+  to authenticated
   with check (
-    nin_consent = true
+    applicant_user_id = auth.uid()
+    and nin_consent = true
     and nin_last4 ~ '^[0-9]{4}$'
     and liveness_consent = true
-    and verification_media_count > 0
     and applicant_email like '%@%'
     and identity_verification_status = 'pending'
     and subscription_status = 'pending'

@@ -53,7 +53,7 @@ The public website gets insert access to `quote_requests`, `artisan_applications
 
 Run the latest `schema.sql` before deploying the LGA interface. The canonical location fields are `state`, `lga`, and optional `town`. The legacy `area` fields remain populated with the LGA value for compatibility with existing profiles, quote links, and older deployments. FCT users select an Area Council through the same LGA/Area Council control.
 
-## NIN + Selfie/Liveness Verification Edge Function
+## QoreID NIN-Liveness Collection Verification
 
 The browser must never call an identity provider directly. Deploy `supabase/functions/verify-nin` and store VerifyMe/QoreID, Youverify, or another provider's credentials as Supabase Edge Function secrets.
 
@@ -71,17 +71,19 @@ supabase secrets set IDENTITY_PROVIDER_URL=https://provider.example/verify-ident
 supabase secrets set IDENTITY_PROVIDER_API_KEY=provider_secret_key
 ```
 
-QoreID workflow/session verification secrets:
+QoreID Collection SDK verification secrets:
 
 ```bash
 supabase secrets set IDENTITY_PROVIDER_NAME=qoreid
 supabase secrets set IDENTITY_PROVIDER_MODE=live
 supabase secrets set QOREID_CLIENT_ID=your_qoreid_client_id
 supabase secrets set QOREID_CLIENT_SECRET=your_qoreid_client_secret
-supabase secrets set QOREID_WORKFLOW_ID=1953
+supabase secrets set QOREID_PRODUCT_CODE=liveness_nin
 ```
 
-When `IDENTITY_PROVIDER_NAME=qoreid` and `QOREID_WORKFLOW_ID` is set, the function mints a QoreID workflow SDK session token with `POST https://api.qoreid.com/v1/sessions` using `{ "type": "workflow", "workflowId": 1953, "reference": "..." }`. Do not send `productCode` for workflow sessions. The browser then starts the QoreID Web SDK with the short-lived `sdkSessionToken`. If `QOREID_WORKFLOW_ID` is not set, the function falls back to the direct NIN face verification endpoint.
+The function now always mints a QoreID Collection SDK session with `POST https://api.qoreid.com/v1/sessions` using `{ "type": "collection", "productCode": "liveness_nin", "reference": "...", "subjectRef": "..." }`. The browser starts the QoreID Web SDK with the returned short-lived, single-use `sdkSessionToken`. There is no workflow or direct NIN API fallback. Collection ID `30423` is configured in QoreID; it is not sent as the SDK `productCode`.
+
+Run `qoreid-collection-readiness.sql` once in the Supabase SQL Editor before testing. It replaces the former policy that required a duplicate selfie upload with an authenticated, account-owned application policy.
 
 QoreID webhook for automatic artisan verification:
 
@@ -89,7 +91,7 @@ QoreID webhook for automatic artisan verification:
 https://bqzbadvqozpmdkmdenly.supabase.co/functions/v1/qoreid-webhook
 ```
 
-Add this URL to the QoreID workflow webhook settings. When QoreID posts a successful liveness + vNIN result, FixAm 9ja automatically marks the artisan application as verified, creates or updates the artisan profile, and keeps the public listing hidden until subscription status is active.
+Add this URL as the Collection test webhook, then as the live webhook when QoreID activates Collection `30423`. Set the same secret in QoreID and `QOREID_WEBHOOK_SECRET`; the function validates QoreID's `x-verifyme-signature` HMAC-SHA512 header against the unmodified request body. When QoreID posts a successful NIN-liveness result, FixAm 9ja automatically marks the artisan application as verified, creates or updates the artisan profile, and applies the existing marketplace visibility rules.
 
 Optional secrets:
 
@@ -106,11 +108,9 @@ The function stores only:
 
 - `nin_last4`
 - NIN and liveness consent timestamps
-- private selfie/liveness media count
+- provider liveness media count (the QoreID SDK captures liveness; FixAm does not upload a duplicate selfie)
 - verification status
 - provider reference
 - small response summary
 
-It does not store raw NIN. Selfie/liveness files are uploaded to the private `fixam-verification` bucket and are not public portfolio media.
-
-When a provider URL/key is configured, the Edge Function creates temporary signed URLs for the private selfie/liveness files and sends those URLs to the provider. The files remain private in Supabase Storage.
+It does not store raw NIN or a duplicate browser-captured selfie. QoreID performs the NIN and live-face capture inside its secure SDK session; FixAm stores only the last four NIN digits, consent, provider reference, status, and a small response summary.

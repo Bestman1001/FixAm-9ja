@@ -222,10 +222,6 @@
             <input id="joinNin" type="password" inputmode="numeric" minlength="11" maxlength="11" placeholder="11-digit NIN" required />
           </label>
           <label>
-            <span>Selfie/liveness proof</span>
-            <input id="joinSelfie" type="file" accept="image/*,video/*" capture="user" required />
-          </label>
-          <label>
             <span>Years of experience</span>
             <input id="joinExperience" type="number" min="0" max="60" placeholder="e.g. 5" required />
           </label>
@@ -239,7 +235,7 @@
           </label>
           <label class="full-span consent-row">
             <input id="joinNinConsent" type="checkbox" required />
-            <span>I agree that FixAm 9ja may verify my identity using my NIN and selfie/liveness proof for marketplace trust and safety.</span>
+            <span>I agree that FixAm 9ja may use QoreID to verify my NIN and complete a live face check for marketplace trust and safety.</span>
           </label>
           <div class="join-step-actions full-span">
             <button class="secondary-action" id="joinBackButton" type="button" hidden>Back</button>
@@ -321,7 +317,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="location-data.js?v=20260814-map"></script>
     <script src="supabase-config.js?v=20260814"></script>
-    <script src="app.js?v=20260815-app-readiness"></script>
+    <script src="app.js?v=20260827-qoreid-collection"></script>
     <script src="help-widget.js?v=20260823-mailboxes"></script>
   </body>
 </html>

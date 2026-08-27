@@ -518,7 +518,7 @@ function initializeJoinSteps() {
     joinName: 1, joinEmail: 1, joinPhone: 1,
     joinTrade: 2, joinState: 2, joinArea: 2, joinTown: 2, joinExperience: 2, joinDetails: 2,
     joinPlan: 3, joinMedia: 3,
-    joinNin: 4, joinSelfie: 4, joinNinConsent: 4,
+    joinNin: 4, joinNinConsent: 4,
   };
   Object.entries(stepByField).forEach(([id, step]) => {
     document.querySelector(`#${id}`)?.closest("label")?.setAttribute("data-join-step", String(step));
@@ -844,7 +844,6 @@ joinForm.addEventListener("submit", async (event) => {
 
   const applicationCode = `F9-A-${Date.now().toString().slice(-6)}`;
   const mediaFiles = selectedFiles("#joinMedia");
-  const selfieFiles = selectedFiles("#joinSelfie", 1);
   const fullName = document.querySelector("#joinName").value.trim();
   const applicantEmail = document.querySelector("#joinEmail").value.trim().toLowerCase();
   const normalizedPhone = normalizeNigerianPhone(document.querySelector("#joinPhone").value.trim());
@@ -881,16 +880,6 @@ joinForm.addEventListener("submit", async (event) => {
     return;
   }
 
-  if (!selfieFiles.length) {
-    setJoinStatus("Add a clear selfie or short liveness video for identity verification.", "error");
-    return;
-  }
-
-  if (!isAllowedMedia(selfieFiles[0])) {
-    setJoinStatus("Selfie/liveness proof must be a supported image/video under 50MB.", "error");
-    return;
-  }
-
   const payload = {
     application_code: applicationCode,
     full_name: fullName,
@@ -911,7 +900,7 @@ joinForm.addEventListener("submit", async (event) => {
     liveness_consent: hasNinConsent,
     liveness_consent_at: new Date().toISOString(),
     identity_verification_status: "pending",
-    verification_media_count: selfieFiles.length,
+    verification_media_count: 0,
     subscription_status: "pending",
     subscription_plan: document.querySelector("#joinPlan").value,
     subscription_amount: subscriptionAmountForPlan(document.querySelector("#joinPlan").value),
@@ -947,35 +936,13 @@ joinForm.addEventListener("submit", async (event) => {
     return;
   }
 
-  setJoinStatus("Application received. Uploading private selfie/liveness proof...", "");
-  const verificationMediaResult = await uploadMediaFiles({
-    files: selfieFiles,
-    folder: `identity-verification/${applicationCode}`,
-    entityType: "identity_verification",
-    entityId: applicationCode,
-    role: "artisan",
-    bucket: "fixam-verification",
-    visibility: "private",
-  });
-
-  if (verificationMediaResult.error) {
-    setJoinStatus(
-      `Application ${applicationCode} received, but selfie/liveness upload needs retry: ${verificationMediaResult.error}`,
-      "error",
-    );
-    joinSubmitButton.textContent = "Try again";
-    joinSubmitButton.disabled = false;
-    return;
-  }
-
-  setJoinStatus("Selfie/liveness proof received. Checking identity verification...", "");
+  setJoinStatus("Application received. Preparing the secure QoreID identity check...", "");
   const verificationResult = await verifyNinForApplication({
     applicationCode,
     applicantEmail,
     fullName,
     phone: payload.phone,
     nin,
-    selfieMediaPaths: verificationMediaResult.paths || [],
   });
 
   const mediaResult = await uploadMediaFiles({
@@ -996,6 +963,7 @@ joinForm.addEventListener("submit", async (event) => {
     url: verificationResult.verification_url,
     sdkSessionToken: verificationResult.sdk_session_token,
     reference: verificationResult.reference || applicationCode,
+    nin,
     applicationCode,
     plan: payload.subscription_plan,
     fullName,
@@ -1012,7 +980,7 @@ joinForm.addEventListener("submit", async (event) => {
   showJoinStep(1);
 });
 
-async function verifyNinForApplication({ applicationCode, applicantEmail, fullName, phone, nin, selfieMediaPaths }) {
+async function verifyNinForApplication({ applicationCode, applicantEmail, fullName, phone, nin }) {
   if (!supabaseClient) return { status: "pending", message: "Supabase is not configured." };
 
   const { data, error } = await supabaseClient.functions.invoke("verify-nin", {
@@ -1022,7 +990,6 @@ async function verifyNinForApplication({ applicationCode, applicantEmail, fullNa
       full_name: fullName,
       phone,
       nin,
-      selfie_media_paths: selfieMediaPaths,
       liveness_consent: true,
       consent: true,
     },
@@ -1240,7 +1207,7 @@ function setJoinStatus(message, type, action = "") {
     button.type = "button";
     button.className = "status-action-link";
     button.textContent = "Start identity check";
-    button.addEventListener("click", () => launchQoreIdWorkflow(action));
+    button.addEventListener("click", () => launchQoreIdCollection(action));
     joinNote.appendChild(document.createElement("br"));
     joinNote.appendChild(button);
   }
@@ -1305,7 +1272,7 @@ async function createSubscriptionRequest(action, button) {
   );
 }
 
-async function launchQoreIdWorkflow(action) {
+async function launchQoreIdCollection(action) {
   try {
     setJoinStatus("Opening secure QoreID identity check...", "");
     enterQoreIdMode();
@@ -1336,6 +1303,10 @@ async function launchQoreIdWorkflow(action) {
         lastname: name.last,
         email: action.email,
         phone: normalizeNigerianPhone(action.phone),
+      },
+      identityData: {
+        idType: "nin",
+        idNumber: action.nin,
       },
     });
   } catch (error) {

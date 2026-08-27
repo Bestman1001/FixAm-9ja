@@ -49,8 +49,8 @@ Deno.serve(async (req) => {
       return json({ error: "Identity verification consent is required." }, 400);
     }
 
-    if (!livenessConsent || !selfieMediaPaths.length) {
-      return json({ error: "Selfie/liveness proof and consent are required." }, 400);
+    if (!livenessConsent) {
+      return json({ error: "Liveness verification consent is required." }, 400);
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
@@ -78,8 +78,15 @@ Deno.serve(async (req) => {
     }
 
     const supabaseAdmin = createClient(supabaseUrl, serviceKey);
-    const selfieMediaUrls = await createVerificationProofUrls(supabaseAdmin, selfieMediaPaths);
-    const result = await verifyWithProvider({ nin, fullName, phone, applicantEmail, selfieMediaPaths, selfieMediaUrls });
+    const result = await verifyWithProvider({
+      applicationCode,
+      applicantUserId: userData.user.id,
+      nin,
+      fullName,
+      phone,
+      applicantEmail,
+      selfieMediaPaths,
+    });
     const now = new Date().toISOString();
 
     const updatePayload = {
@@ -133,12 +140,13 @@ Deno.serve(async (req) => {
 });
 
 async function verifyWithProvider(input: {
+  applicationCode: string;
+  applicantUserId: string;
   nin: string;
   fullName: string;
   phone: string;
   applicantEmail: string;
   selfieMediaPaths: string[];
-  selfieMediaUrls: string[];
 }): Promise<VerificationResult> {
   const mode = Deno.env.get("NIN_PROVIDER_MODE") || Deno.env.get("IDENTITY_PROVIDER_MODE") || "pending";
   const reference = `identity-${crypto.randomUUID()}`;
@@ -155,7 +163,7 @@ async function verifyWithProvider(input: {
   }
 
   if (providerName() === "qoreid" || Deno.env.get("QOREID_CLIENT_ID")) {
-    return verifyWithQoreId(input, reference);
+    return createQoreIdCollectionSession(input, reference);
   }
 
   const providerUrl = Deno.env.get("NIN_PROVIDER_URL") || Deno.env.get("IDENTITY_PROVIDER_URL");
@@ -182,7 +190,6 @@ async function verifyWithProvider(input: {
       phone: input.phone,
       email: input.applicantEmail,
       selfie_media_paths: input.selfieMediaPaths,
-      selfie_media_urls: input.selfieMediaUrls,
       liveness_consent: true,
       consent: true,
     }),
@@ -208,20 +215,21 @@ async function verifyWithProvider(input: {
   };
 }
 
-async function verifyWithQoreId(
+async function createQoreIdCollectionSession(
   input: {
+    applicationCode: string;
+    applicantUserId: string;
     nin: string;
     fullName: string;
     phone: string;
     applicantEmail: string;
     selfieMediaPaths: string[];
-    selfieMediaUrls: string[];
   },
   fallbackReference: string,
 ): Promise<VerificationResult> {
   const clientId = Deno.env.get("QOREID_CLIENT_ID");
   const clientSecret = Deno.env.get("QOREID_CLIENT_SECRET");
-  const workflowId = Deno.env.get("QOREID_WORKFLOW_ID");
+  const productCode = Deno.env.get("QOREID_PRODUCT_CODE") || "liveness_nin";
   const baseUrl = Deno.env.get("QOREID_BASE_URL") || "https://api.qoreid.com";
 
   if (!clientId || !clientSecret) {
@@ -232,122 +240,26 @@ async function verifyWithQoreId(
     };
   }
 
-  if (workflowId) {
-    return createQoreIdWorkflowSession(input, fallbackReference, {
-      baseUrl,
-      clientId,
-      clientSecret,
-    });
-  }
-
-  if (!input.selfieMediaUrls.length) {
+  if (productCode !== "liveness_nin" && productCode !== "face_verification_nin") {
     return {
       status: "failed",
       reference: fallbackReference,
-      message: "Selfie/liveness proof could not be prepared for QoreID.",
+      message: "QoreID product code must be liveness_nin or face_verification_nin.",
     };
   }
 
-  const tokenResponse = await fetch(`${baseUrl}/token`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    body: JSON.stringify({
-      clientId,
-      secret: clientSecret,
-    }),
-  });
-
-  const tokenPayload = await parseProviderJson(tokenResponse);
-
-  if (!tokenResponse.ok) {
-    const detail = providerMessage(tokenPayload);
-    return {
-      status: "failed",
-      reference: fallbackReference,
-      message: detail
-        ? `QoreID token request failed with HTTP ${tokenResponse.status}: ${detail}`
-        : `QoreID token request failed with HTTP ${tokenResponse.status}.`,
-      providerResponse: tokenPayload,
-    };
-  }
-
-  const accessToken = extractAccessToken(tokenPayload);
-  if (!accessToken) {
-    return {
-      status: "failed",
-      reference: fallbackReference,
-      message: "QoreID token response did not include an access token.",
-      providerResponse: tokenPayload,
-    };
-  }
-
-  const verificationResponse = await fetch(`${baseUrl}/v1/ng/identities/face-verification/nin`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-      Authorization: `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify({
-      idNumber: input.nin,
-      photoUrl: input.selfieMediaUrls[0],
-    }),
-  });
-
-  const providerResponse = await parseProviderJson(verificationResponse);
-
-  if (!verificationResponse.ok) {
-    const detail = providerMessage(providerResponse);
-    return {
-      status: "failed",
-      reference: fallbackReference,
-      message: detail
-        ? `QoreID NIN face verification failed with HTTP ${verificationResponse.status}: ${detail}`
-        : `QoreID NIN face verification failed with HTTP ${verificationResponse.status}.`,
-      providerResponse,
-    };
-  }
-
-  const normalized = normalizeProviderResponse(providerResponse);
-  return {
-    status: normalized.status,
-    reference: normalized.reference || fallbackReference,
-    message: normalized.message,
-    providerResponse,
-  };
-}
-
-async function createQoreIdWorkflowSession(
-  input: {
-    nin: string;
-    fullName: string;
-    phone: string;
-    applicantEmail: string;
-    selfieMediaPaths: string[];
-    selfieMediaUrls: string[];
-  },
-  fallbackReference: string,
-  config: {
-    baseUrl: string;
-    clientId: string;
-    clientSecret: string;
-  },
-): Promise<VerificationResult> {
-  const workflowId = Deno.env.get("QOREID_WORKFLOW_ID") || "";
-  const basicToken = btoa(`${config.clientId}:${config.clientSecret}`);
-  const sessionPayload: Record<string, unknown> = {
-    type: "workflow",
-    workflowId: numericValue(workflowId) || workflowId,
-    reference: fallbackReference,
-    subjectRef: fallbackReference,
+  const basicToken = btoa(`${clientId}:${clientSecret}`);
+  const sessionReference = input.applicationCode;
+  const sessionPayload = {
+    type: "collection",
+    productCode,
+    reference: sessionReference,
+    subjectRef: await pseudonymousSubjectRef(input.applicantUserId),
     ttlSeconds: 600,
     maxAttempts: 3,
   };
 
-  const sessionResponse = await fetch(`${config.baseUrl}/v1/sessions`, {
+  const sessionResponse = await fetch(`${baseUrl}/v1/sessions`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -358,7 +270,7 @@ async function createQoreIdWorkflowSession(
   });
 
   const providerResponse = await parseProviderJson(sessionResponse);
-  const sessionReference = extractSessionReference(providerResponse) || fallbackReference;
+  const providerReference = extractSessionReference(providerResponse) || sessionReference;
   const verificationUrl = extractVerificationUrl(providerResponse);
   const sdkSessionToken = extractSdkSessionToken(providerResponse);
 
@@ -366,42 +278,38 @@ async function createQoreIdWorkflowSession(
     const detail = providerMessage(providerResponse);
     return {
       status: "failed",
-      reference: sessionReference,
+      reference: providerReference,
       message: detail
-        ? `QoreID workflow session failed with HTTP ${sessionResponse.status}: ${detail}`
-        : `QoreID workflow session failed with HTTP ${sessionResponse.status}.`,
+        ? `QoreID Collection session failed with HTTP ${sessionResponse.status}: ${detail}`
+        : `QoreID Collection session failed with HTTP ${sessionResponse.status}.`,
+      providerResponse,
+    };
+  }
+
+  if (!sdkSessionToken && !verificationUrl) {
+    return {
+      status: "failed",
+      reference: providerReference,
+      message: "QoreID Collection session did not return an SDK token or verification URL.",
       providerResponse,
     };
   }
 
   return {
     status: "pending",
-    reference: sessionReference,
+    reference: providerReference,
     verificationUrl,
     sdkSessionToken,
     message: sdkSessionToken
-      ? "QoreID verification session is ready. Start the secure liveness and vNIN check to continue."
-      : verificationUrl
-        ? "QoreID verification session is ready. Open the secure verification link to complete liveness and vNIN."
-        : "QoreID verification session was created. Complete the QoreID workflow before marketplace visibility.",
+      ? "QoreID NIN-liveness Collection session is ready. Start the secure identity check to continue."
+      : "QoreID NIN-liveness Collection session is ready. Open the secure verification link to continue.",
     providerResponse,
   };
 }
 
-async function createVerificationProofUrls(supabaseAdmin: ReturnType<typeof createClient>, paths: string[]) {
-  const urls: string[] = [];
-
-  for (const path of paths) {
-    const { data, error } = await supabaseAdmin.storage
-      .from("fixam-verification")
-      .createSignedUrl(path, 60 * 10);
-
-    if (!error && data?.signedUrl) {
-      urls.push(data.signedUrl);
-    }
-  }
-
-  return urls;
+async function pseudonymousSubjectRef(userId: string) {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`fixam:${userId}`));
+  return `fixam_${Array.from(new Uint8Array(digest)).slice(0, 16).map((byte) => byte.toString(16).padStart(2, "0")).join("")}`;
 }
 
 async function parseProviderJson(response: Response) {
@@ -413,43 +321,6 @@ async function parseProviderJson(response: Response) {
   } catch (_error) {
     return { raw: text.slice(0, 500) };
   }
-}
-
-function shortProviderCode(value: string) {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9_-]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 100) || "fixam-artisan-identity";
-}
-
-function numericValue(value: string) {
-  const number = Number(value);
-  return Number.isFinite(number) && value.trim() !== "" ? number : null;
-}
-
-function extractAccessToken(response: unknown) {
-  if (!response || typeof response !== "object") return "";
-
-  const source = response as Record<string, unknown>;
-  const data = typeof source.data === "object" && source.data
-    ? source.data as Record<string, unknown>
-    : {};
-
-  return String(
-    source.accessToken ||
-      source.access_token ||
-      source.token ||
-      source.bearerToken ||
-      source.jwt ||
-      data.accessToken ||
-      data.access_token ||
-      data.token ||
-      data.bearerToken ||
-      data.jwt ||
-      "",
-  );
 }
 
 function extractSessionReference(response: unknown) {
@@ -612,7 +483,7 @@ function summarizeProviderResponse(response: unknown) {
     match_score: faceCheck.match_score ?? null,
     reference: source.reference || source.request_id || source.transaction_id || source.sessionId || source.id || null,
     session_id: source.sessionId || source.session_id || null,
-    workflow_id: source.workflowId || source.worflowId || null,
+    product_code: source.productCode || source.product_code || null,
     message: source.message || source.description || null,
   };
 }

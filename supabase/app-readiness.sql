@@ -145,6 +145,20 @@ for each row execute function public.fixam_notify_application_status();
 
 -- Require authenticated ownership for identity verification. Existing anonymous
 -- applications should be linked to an account before production verification.
+drop policy if exists "Anyone can create artisan applications" on public.artisan_applications;
+drop policy if exists "Authenticated users create own artisan applications" on public.artisan_applications;
+create policy "Authenticated users create own artisan applications"
+  on public.artisan_applications for insert to authenticated
+  with check (
+    applicant_user_id = auth.uid()
+    and nin_consent = true
+    and nin_last4 ~ '^[0-9]{4}$'
+    and liveness_consent = true
+    and applicant_email like '%@%'
+    and identity_verification_status = 'pending'
+    and subscription_status = 'pending'
+  );
+
 drop policy if exists "Anyone can create media metadata" on public.media_uploads;
 create policy "Authenticated users create own media metadata"
   on public.media_uploads for insert to authenticated
