@@ -969,6 +969,13 @@ joinForm.addEventListener("submit", async (event) => {
     fullName,
     email: applicantEmail,
     phone: payload.phone,
+    retryVerification: {
+      applicationCode,
+      applicantEmail,
+      fullName,
+      phone: payload.phone,
+      nin,
+    },
   };
   if (!foundingLaunchFree) {
     nextAction.amount = payload.subscription_amount;
@@ -996,9 +1003,18 @@ async function verifyNinForApplication({ applicationCode, applicantEmail, fullNa
   });
 
   if (error) {
+    let detail = "";
+    try {
+      const errorBody = await error.context?.json?.();
+      detail = String(errorBody?.error || errorBody?.message || "").trim();
+    } catch (_parseError) {
+      detail = "";
+    }
     return {
-      status: "pending",
-      message: "Identity verification is pending because the verification service is not available yet.",
+      status: "failed",
+      message: detail
+        ? `The secure identity check could not start: ${detail}`
+        : "The secure identity check could not start. Please retry or contact verification@fixam9ja.com.",
     };
   }
 
@@ -1200,6 +1216,7 @@ function setJoinStatus(message, type, action = "") {
 
   const actionUrl = typeof action === "string" ? action : action?.url;
   const sdkSessionToken = typeof action === "object" ? action?.sdkSessionToken : "";
+  const canRetryVerification = typeof action === "object" && action?.retryVerification;
   const canRequestSubscription = typeof action === "object" && action?.applicationCode && action?.amount;
 
   if (sdkSessionToken) {
@@ -1223,6 +1240,16 @@ function setJoinStatus(message, type, action = "") {
     joinNote.appendChild(link);
   }
 
+  if (canRetryVerification && !sdkSessionToken && !actionUrl) {
+    const retryButton = document.createElement("button");
+    retryButton.type = "button";
+    retryButton.className = "status-action-link";
+    retryButton.textContent = "Retry secure identity check";
+    retryButton.addEventListener("click", () => retryIdentityVerification(action, retryButton));
+    joinNote.appendChild(document.createElement("br"));
+    joinNote.appendChild(retryButton);
+  }
+
   if (canRequestSubscription) {
     const subscriptionButton = document.createElement("button");
     subscriptionButton.type = "button";
@@ -1232,6 +1259,29 @@ function setJoinStatus(message, type, action = "") {
     joinNote.appendChild(document.createElement("br"));
     joinNote.appendChild(subscriptionButton);
   }
+}
+
+async function retryIdentityVerification(action, button) {
+  button.disabled = true;
+  button.textContent = "Preparing identity check...";
+  const result = await verifyNinForApplication(action.retryVerification);
+  const nextAction = {
+    ...action,
+    url: result.verification_url,
+    sdkSessionToken: result.sdk_session_token,
+    reference: result.reference || action.applicationCode,
+  };
+
+  if (result.status === "failed" || (!nextAction.sdkSessionToken && !nextAction.url)) {
+    setJoinStatus(
+      result.message || "The secure identity check could not start. Please try again.",
+      "error",
+      nextAction,
+    );
+    return;
+  }
+
+  setJoinStatus(result.message || "The secure identity check is ready.", "success", nextAction);
 }
 
 async function createSubscriptionRequest(action, button) {

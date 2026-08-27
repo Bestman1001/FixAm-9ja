@@ -67,17 +67,20 @@ Deno.serve(async (req) => {
     const { data: userData, error: userError } = await userClient.auth.getUser();
     if (userError || !userData.user) return json({ error: "Session is invalid or expired." }, 401);
 
-    const { data: ownedApplication } = await userClient
+    const supabaseAdmin = createClient(supabaseUrl, serviceKey);
+    const { data: ownedApplication, error: ownershipError } = await supabaseAdmin
       .from("artisan_applications")
-      .select("application_code, applicant_email")
+      .select("application_code, applicant_email, applicant_user_id")
       .eq("application_code", applicationCode)
       .eq("applicant_user_id", userData.user.id)
       .maybeSingle();
+    if (ownershipError) {
+      return json({ error: "The application ownership check could not be completed." }, 500);
+    }
     if (!ownedApplication || ownedApplication.applicant_email?.toLowerCase() !== applicantEmail) {
       return json({ error: "This application is not linked to your signed-in account." }, 403);
     }
 
-    const supabaseAdmin = createClient(supabaseUrl, serviceKey);
     const result = await verifyWithProvider({
       applicationCode,
       applicantUserId: userData.user.id,
