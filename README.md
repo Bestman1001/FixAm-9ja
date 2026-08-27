@@ -39,7 +39,9 @@ FixAm 9ja is a map-first Nigerian artisan marketplace operated by ObaX Innovatio
 
 ## Supabase
 
-Run `supabase/schema.sql` in your Supabase SQL Editor, then paste your Project URL and anon public key into `supabase-config.js`.
+For a fresh environment, run `supabase/schema.sql`, `supabase/admin-automation.sql`, and
+`supabase/app-readiness.sql` in that order. Then configure the environment's Project URL and public
+anonymous key in `supabase-config.js`. Use separate development, staging and production projects.
 
 The public website can insert quote requests and artisan applications. Admin users can read and update them only after:
 
@@ -78,4 +80,10 @@ Then visit `http://localhost:5173`.
 ## Tech
 
 This prototype uses plain HTML, CSS, JavaScript, Leaflet, OpenStreetMap tiles, and Supabase so it can be hosted easily on GitHub Pages, Netlify, Vercel, or any static hosting service.
+
+## Production and mobile apps
+
+See `APP-READINESS.md` for environment separation, required secrets, deployment order, release tests,
+account deletion, security gates and the recommended Capacitor packaging sequence. Run
+`./scripts/verify-production.ps1` before a release.
 

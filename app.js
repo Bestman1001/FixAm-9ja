@@ -755,6 +755,11 @@ quoteForm.addEventListener("submit", async (event) => {
 
   const requestId = `F9-${String(selectedQuoteArtisan.id).padStart(3, "0")}-${Date.now().toString().slice(-4)}`;
   const mediaFiles = selectedFiles("#quoteMedia");
+  const quoteUserId = await currentUserId();
+  if (mediaFiles.length && !quoteUserId) {
+    setQuoteStatus("Sign in to attach private job photos or videos. You can still send a request without media.", "error");
+    return;
+  }
   const payload = {
     request_code: requestId,
     artisan_id: selectedQuoteArtisan.id,
@@ -769,7 +774,7 @@ quoteForm.addEventListener("submit", async (event) => {
     job_location: document.querySelector("#quoteLocation").value.trim(),
     urgency: document.querySelector("#quoteUrgency").value,
     job_details: document.querySelector("#quoteDetails").value.trim(),
-    customer_user_id: await currentUserId(),
+    customer_user_id: quoteUserId,
     media_count: mediaFiles.length,
     source: "website",
   };
@@ -808,6 +813,8 @@ quoteForm.addEventListener("submit", async (event) => {
     entityType: "quote_request",
     entityId: requestId,
     role: "customer",
+    bucket: "fixam-private-media",
+    visibility: "private",
   });
 
   setQuoteStatus(
@@ -824,6 +831,17 @@ quoteForm.addEventListener("submit", async (event) => {
 joinForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
+  if (!supabaseClient) {
+    setJoinStatus("The account service is unavailable. Try again shortly.", "error");
+    return;
+  }
+  const applicantUserId = await currentUserId();
+  const { data: sessionData } = await supabaseClient.auth.getSession();
+  if (!applicantUserId || !sessionData.session?.user) {
+    setJoinStatus("Sign in or create an artisan account before submitting identity information.", "error");
+    return;
+  }
+
   const applicationCode = `F9-A-${Date.now().toString().slice(-6)}`;
   const mediaFiles = selectedFiles("#joinMedia");
   const selfieFiles = selectedFiles("#joinSelfie", 1);
@@ -832,6 +850,11 @@ joinForm.addEventListener("submit", async (event) => {
   const normalizedPhone = normalizeNigerianPhone(document.querySelector("#joinPhone").value.trim());
   const nin = document.querySelector("#joinNin").value.trim();
   const hasNinConsent = document.querySelector("#joinNinConsent").checked;
+
+  if (applicantEmail !== sessionData.session.user.email?.toLowerCase()) {
+    setJoinStatus("Use the same email address as your signed-in FixAm 9ja account.", "error");
+    return;
+  }
 
   if (!fullName || fullName.includes("@")) {
     setJoinStatus("Enter the artisan's real full name, not an email address.", "error");
@@ -881,7 +904,7 @@ joinForm.addEventListener("submit", async (event) => {
     preferred_plan: document.querySelector("#joinPlan").value,
     years_experience: Number(document.querySelector("#joinExperience").value),
     work_summary: `${document.querySelector("#joinDetails").value.trim()}\n\nLocation: ${joinTown.value.trim()}, ${joinArea.value}, ${joinState.value}`,
-    applicant_user_id: await currentUserId(),
+    applicant_user_id: applicantUserId,
     nin_last4: nin.slice(-4),
     nin_consent: hasNinConsent,
     nin_consent_at: new Date().toISOString(),
@@ -1023,7 +1046,7 @@ function verificationStatusMessage(result) {
   }
 
   if (result.status === "failed") {
-    return `${result.message || "Identity verification could not be completed."} FixAm 9ja will review it manually.`;
+    return `${result.message || "Identity verification could not be completed."} FixAm 9ja will review it manually. Contact verification@fixam9ja.com if you need help.`;
   }
 
   return foundingLaunchFree
@@ -1277,7 +1300,7 @@ async function createSubscriptionRequest(action, button) {
   }
 
   setJoinStatus(
-    `Subscription activation request ${requestCode} saved. FixAm 9ja will confirm payment setup before public listing.`,
+    `Subscription activation request ${requestCode} saved. FixAm 9ja will confirm payment setup before public listing. Contact payments@fixam9ja.com for billing support.`,
     "success",
   );
 }

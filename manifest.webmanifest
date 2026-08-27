@@ -5,6 +5,16 @@
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "orientation": "any",
+  "id": "fixam9ja-marketplace",
+  "lang": "en-NG",
+  "categories": ["business", "lifestyle", "utilities"],
+  "shortcuts": [
+    { "name": "Find an artisan", "short_name": "Find artisan", "url": "./index.html#marketplace" },
+    { "name": "My account", "short_name": "Account", "url": "./account.html" },
+    { "name": "Get help", "short_name": "Help", "url": "./help.html" }
+  ],
   "background_color": "#f4f8f6",
   "theme_color": "#064c48",
   "icons": [

@@ -59,6 +59,12 @@
       keywords: ["safety", "dispute", "scam", "money", "problem"],
       answer:
         "Agree scope, price, materials, and timing before work starts. Keep communication clear and avoid paying large sums without proof of work. Report suspicious behaviour so FixAm 9ja can review the account."
+    },
+    {
+      title: "Contact the right FixAm 9ja team",
+      keywords: ["contact", "support", "email", "privacy", "verification", "refund", "billing"],
+      answer:
+        "Use <a href='mailto:support@fixam9ja.com'>support@fixam9ja.com</a> for account or technical help, <a href='mailto:customers@fixam9ja.com'>customers@fixam9ja.com</a> for customer cases, <a href='mailto:artisans@fixam9ja.com'>artisans@fixam9ja.com</a> for artisan onboarding, <a href='mailto:verification@fixam9ja.com'>verification@fixam9ja.com</a> for identity checks, <a href='mailto:payments@fixam9ja.com'>payments@fixam9ja.com</a> for billing, and <a href='mailto:privacy@fixam9ja.com'>privacy@fixam9ja.com</a> for data rights or deletion."
     }
   ];
 
@@ -72,7 +78,7 @@
       ) || {
         title: "I can help with FixAm 9ja basics",
         answer:
-          "Try asking about quote requests, artisan registration, NIN verification, accepting jobs, customer reviews, subscriptions, media uploads, states, areas, or account login."
+          "Try asking about quote requests, artisan registration, NIN verification, accepting jobs, customer reviews, subscriptions, media uploads, states, areas, account login, or contact details."
       }
     );
   }

@@ -1,7 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Origin": Deno.env.get("APP_ORIGIN") || "https://bestman1001.github.io",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-fixam-webhook-secret",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
@@ -23,7 +23,8 @@ Deno.serve(async (req) => {
 
   try {
     const webhookSecret = Deno.env.get("QOREID_WEBHOOK_SECRET") || "";
-    if (webhookSecret && !hasValidWebhookSecret(req, webhookSecret)) {
+    if (!webhookSecret) return json({ error: "Webhook secret is not configured." }, 503);
+    if (!hasValidWebhookSecret(req, webhookSecret)) {
       return json({ error: "Unauthorized webhook." }, 401);
     }
 
@@ -132,9 +133,7 @@ Deno.serve(async (req) => {
 function hasValidWebhookSecret(req: Request, expected: string) {
   const authorization = req.headers.get("authorization") || "";
   const headerSecret = req.headers.get("x-fixam-webhook-secret") || "";
-  const urlSecret = new URL(req.url).searchParams.get("secret") || "";
-
-  return authorization === `Bearer ${expected}` || headerSecret === expected || urlSecret === expected;
+  return authorization === `Bearer ${expected}` || headerSecret === expected;
 }
 
 async function findApplicationByReferences(supabaseAdmin: SupabaseAdmin, references: string[]) {

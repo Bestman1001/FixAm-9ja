@@ -37,6 +37,11 @@ reviewForm.addEventListener("submit", async (event) => {
   if (!supabaseClient || !context.token || !context.artisanId) return;
 
   const mediaFiles = selectedFiles("#reviewMedia");
+  const reviewUserId = await currentUserId();
+  if (mediaFiles.length && !reviewUserId) {
+    setNote("Sign in to your FixAm 9ja account before attaching public review media, or publish without media.", "error");
+    return;
+  }
   const payload = {
     review_token: context.token,
     quote_request_id: context.quoteId || null,
@@ -53,7 +58,7 @@ reviewForm.addEventListener("submit", async (event) => {
     price_fairness_rating: Number(document.querySelector("#priceRating").value),
     would_recommend: document.querySelector("#wouldRecommend").value === "true",
     comment: document.querySelector("#comment").value.trim(),
-    customer_user_id: await currentUserId(),
+    customer_user_id: reviewUserId,
     media_count: mediaFiles.length,
     visibility: "public",
   };

@@ -1,7 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Origin": Deno.env.get("APP_ORIGIN") || "https://bestman1001.github.io",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
@@ -54,10 +54,27 @@ Deno.serve(async (req) => {
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-    if (!supabaseUrl || !serviceKey) {
+    if (!supabaseUrl || !anonKey || !serviceKey) {
       return json({ error: "Supabase service credentials are not configured." }, 500);
+    }
+
+    const authorization = req.headers.get("Authorization");
+    if (!authorization?.startsWith("Bearer ")) return json({ error: "Authentication required." }, 401);
+    const userClient = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authorization } } });
+    const { data: userData, error: userError } = await userClient.auth.getUser();
+    if (userError || !userData.user) return json({ error: "Session is invalid or expired." }, 401);
+
+    const { data: ownedApplication } = await userClient
+      .from("artisan_applications")
+      .select("application_code, applicant_email")
+      .eq("application_code", applicationCode)
+      .eq("applicant_user_id", userData.user.id)
+      .maybeSingle();
+    if (!ownedApplication || ownedApplication.applicant_email?.toLowerCase() !== applicantEmail) {
+      return json({ error: "This application is not linked to your signed-in account." }, 403);
     }
 
     const supabaseAdmin = createClient(supabaseUrl, serviceKey);
@@ -127,6 +144,9 @@ async function verifyWithProvider(input: {
   const reference = `identity-${crypto.randomUUID()}`;
 
   if (mode === "mock") {
+    if (Deno.env.get("ALLOW_MOCK_IDENTITY") !== "true") {
+      return { status: "failed", reference, message: "Mock identity verification is disabled." };
+    }
     return {
       status: "verified",
       reference,

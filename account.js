@@ -1,5 +1,5 @@
 const settings = window.FIXAM_SUPABASE || {};
-const productionAccountUrl = "https://bestman1001.github.io/FixAm-9ja/account.html";
+const productionAccountUrl = "https://www.fixam9ja.com/account.html";
 const supabaseClient =
   window.supabase && settings.url && settings.anonKey
     ? window.supabase.createClient(settings.url, settings.anonKey)
@@ -24,6 +24,11 @@ const quoteLeadBadge = document.querySelector("#quoteLeadBadge");
 const applicationList = document.querySelector("#applicationList");
 const artisanProfile = document.querySelector("#artisanProfile");
 const mediaList = document.querySelector("#mediaList");
+const notificationList = document.querySelector("#notificationList");
+const notificationBadge = document.querySelector("#notificationBadge");
+const saveNotificationPreferencesButton = document.querySelector("#saveNotificationPreferences");
+const deleteAccountDialog = document.querySelector("#deleteAccountDialog");
+const deleteAccountNote = document.querySelector("#deleteAccountNote");
 const quoteDialog = document.querySelector("#quoteDialog");
 const quoteDialogType = document.querySelector("#quoteDialogType");
 const quoteDialogTitle = document.querySelector("#quoteDialogTitle");
@@ -130,6 +135,20 @@ quoteDialogClose.addEventListener("click", () => quoteDialog.close());
 quoteDialog.addEventListener("click", (event) => {
   if (event.target === quoteDialog) quoteDialog.close();
 });
+
+document.querySelector("#openDeleteAccount").addEventListener("click", () => {
+  document.querySelector("#deleteAccountConfirmation").value = "";
+  document.querySelector("#deleteAccountAcknowledgement").checked = false;
+  setNote(deleteAccountNote, "", "");
+  deleteAccountDialog.showModal();
+});
+document.querySelector("#closeDeleteAccount").addEventListener("click", () => deleteAccountDialog.close());
+deleteAccountDialog.addEventListener("click", (event) => {
+  if (event.target === deleteAccountDialog) deleteAccountDialog.close();
+});
+document.querySelector("#confirmDeleteAccount").addEventListener("click", deleteCurrentAccount);
+saveNotificationPreferencesButton.addEventListener("click", saveNotificationPreferences);
+notificationList.addEventListener("click", markNotificationRead);
 
 quoteList.addEventListener("click", handleQuoteClick);
 quoteLeadList.addEventListener("click", handleQuoteClick);
@@ -285,6 +304,16 @@ if (supabaseClient) {
 async function loadDashboard(note = null) {
   if (!supabaseClient || !currentUser) return;
 
+  const { data: adminProfile, error: adminProfileError } = await supabaseClient
+    .from("admin_profiles")
+    .select("user_id")
+    .eq("user_id", currentUser.id)
+    .maybeSingle();
+  if (!adminProfileError && adminProfile) {
+    window.location.replace(adminDashboardUrl());
+    return;
+  }
+
   authPanel.hidden = true;
   dashboardPanel.hidden = false;
   signOutButton.hidden = false;
@@ -296,16 +325,16 @@ async function loadDashboard(note = null) {
   if (currentProfile?.account_status === "suspended") {
     await supabaseClient.auth.signOut();
     setSignedOut();
-    setNote(authNote, `This account is suspended. ${currentProfile.status_reason || "Contact FixAm 9ja support for assistance."}`, "error");
+    setNote(authNote, `This account is suspended. ${currentProfile.status_reason || "Contact support@fixam9ja.com for assistance."}`, "error");
     return;
   }
   fillProfileForm();
   applyAccountRoleView();
   if (currentProfile?.account_status === "restricted") {
-    setNote(dashboardNote, `Account access is restricted. ${currentProfile.status_reason || "Contact FixAm 9ja support."}`, "error");
+    setNote(dashboardNote, `Account access is restricted. ${currentProfile.status_reason || "Contact support@fixam9ja.com."}`, "error");
   }
 
-  const [quotesResult, applicationsResult, artisansResult, mediaResult] = await Promise.all([
+  const [quotesResult, applicationsResult, artisansResult, mediaResult, notificationsResult, preferencesResult] = await Promise.all([
     supabaseClient
       .from("quote_requests")
       .select(
@@ -331,6 +360,17 @@ async function loadDashboard(note = null) {
       .eq("uploaded_by_user_id", currentUser.id)
       .order("created_at", { ascending: false })
       .limit(20),
+    supabaseClient
+      .from("user_notifications")
+      .select("id, title, message, category, action_url, read_at, created_at")
+      .eq("user_id", currentUser.id)
+      .order("created_at", { ascending: false })
+      .limit(30),
+    supabaseClient
+      .from("notification_preferences")
+      .select("in_app_enabled, email_enabled, push_enabled")
+      .eq("user_id", currentUser.id)
+      .maybeSingle(),
   ]);
 
   ownedArtisan = artisansResult.data?.[0] || null;
@@ -353,16 +393,19 @@ async function loadDashboard(note = null) {
   renderArtisanProfile(artisansResult.data || []);
   fillArtisanProfileForm();
   renderMedia(mediaResult.data || []);
+  renderNotifications(notificationsResult.data || []);
+  fillNotificationPreferences(preferencesResult.data);
 
   const firstError =
-    quotesResult.error || applicationsResult.error || artisansResult.error || mediaResult.error || quoteLeadsResult.error;
+    quotesResult.error || applicationsResult.error || artisansResult.error || mediaResult.error ||
+    notificationsResult.error || preferencesResult.error || quoteLeadsResult.error;
   if (firstError) {
     setNote(dashboardNote, `${firstError.message}. Ask an administrator to check that the latest database setup has been applied.`, "error");
     return;
   }
 
   if (currentProfile?.account_status === "restricted") {
-    setNote(dashboardNote, `Account access is restricted. ${currentProfile.status_reason || "Contact FixAm 9ja support."}`, "error");
+    setNote(dashboardNote, `Account access is restricted. ${currentProfile.status_reason || "Contact support@fixam9ja.com."}`, "error");
   } else {
     setNote(dashboardNote, note?.message || "Account loaded.", note?.type || "success");
   }
@@ -473,12 +516,21 @@ async function openQuoteDetails(quoteKey) {
 
   const { data, error } = await supabaseClient
     .from("media_uploads")
-    .select("file_name, public_url, mime_type, created_at")
+    .select("file_name, public_url, bucket, storage_path, mime_type, created_at")
     .eq("entity_type", "quote_request")
     .in("entity_id", [String(quote.id), quote.request_code])
     .order("created_at", { ascending: false });
 
-  quoteDialogBody.innerHTML = renderQuoteDetails(quote, error ? [] : data || [], error?.message || "");
+  const mediaItems = error ? [] : await resolvePrivateMediaUrls(data || []);
+  quoteDialogBody.innerHTML = renderQuoteDetails(quote, mediaItems, error?.message || "");
+}
+
+async function resolvePrivateMediaUrls(items) {
+  return Promise.all(items.map(async (item) => {
+    if (item.public_url || !item.bucket || !item.storage_path) return item;
+    const { data, error } = await supabaseClient.storage.from(item.bucket).createSignedUrl(item.storage_path, 600);
+    return { ...item, public_url: error ? "" : data.signedUrl };
+  }));
 }
 
 function renderQuoteDetails(quote, mediaItems, mediaError = "") {
@@ -774,6 +826,80 @@ function renderMedia(items) {
     : `<article><span>No media uploaded from this account yet.</span></article>`;
 }
 
+function renderNotifications(items) {
+  const unread = items.filter((item) => !item.read_at).length;
+  notificationBadge.textContent = String(unread);
+  notificationBadge.classList.toggle("is-empty", unread === 0);
+  notificationList.innerHTML = items.length
+    ? items
+        .map(
+          (item) => `
+            <article class="${item.read_at ? "" : "unread-notification"}">
+              <strong>${escapeHtml(item.title)}</strong>
+              <small>${escapeHtml(item.message)}</small>
+              <small>${new Date(item.created_at).toLocaleString("en-NG")}</small>
+              ${item.action_url ? `<a href="${escapeHtml(item.action_url)}">View update</a>` : ""}
+              ${item.read_at ? "" : `<button class="secondary-action" type="button" data-read-notification="${escapeHtml(item.id)}">Mark as read</button>`}
+            </article>`,
+        )
+        .join("")
+    : `<article><span>No notifications yet.</span></article>`;
+}
+
+function fillNotificationPreferences(preferences) {
+  document.querySelector("#notifyInApp").checked = preferences?.in_app_enabled !== false;
+  document.querySelector("#notifyEmail").checked = preferences?.email_enabled !== false;
+  document.querySelector("#notifyPush").checked = preferences?.push_enabled === true;
+}
+
+async function saveNotificationPreferences() {
+  if (!currentUser) return;
+  const payload = {
+    user_id: currentUser.id,
+    in_app_enabled: document.querySelector("#notifyInApp").checked,
+    email_enabled: document.querySelector("#notifyEmail").checked,
+    push_enabled: document.querySelector("#notifyPush").checked,
+    updated_at: new Date().toISOString(),
+  };
+  const { error } = await supabaseClient.from("notification_preferences").upsert(payload);
+  setNote(dashboardNote, error ? error.message : "Notification preferences saved.", error ? "error" : "success");
+}
+
+async function markNotificationRead(event) {
+  const button = event.target.closest("[data-read-notification]");
+  if (!button || !currentUser) return;
+  const { error } = await supabaseClient
+    .from("user_notifications")
+    .update({ read_at: new Date().toISOString() })
+    .eq("id", button.dataset.readNotification)
+    .eq("user_id", currentUser.id);
+  if (error) setNote(dashboardNote, error.message, "error");
+  else await loadDashboard({ message: "Notification marked as read.", type: "success" });
+}
+
+async function deleteCurrentAccount() {
+  if (!currentUser) return;
+  const confirmation = document.querySelector("#deleteAccountConfirmation").value.trim();
+  const acknowledged = document.querySelector("#deleteAccountAcknowledgement").checked;
+  if (confirmation !== "DELETE" || !acknowledged) {
+    setNote(deleteAccountNote, "Type DELETE and confirm that you understand the deletion is permanent.", "error");
+    return;
+  }
+
+  const button = document.querySelector("#confirmDeleteAccount");
+  button.disabled = true;
+  setNote(deleteAccountNote, "Deleting and anonymising your account data...", "");
+  const { error } = await supabaseClient.functions.invoke("delete-account", { body: { confirmation: "DELETE" } });
+  button.disabled = false;
+  if (error) {
+    setNote(deleteAccountNote, `${error.message}. If this continues, email privacy@fixam9ja.com from your account address.`, "error");
+    return;
+  }
+
+  await supabaseClient.auth.signOut({ scope: "local" });
+  window.location.assign("account-deletion.html?deleted=1");
+}
+
 function setSignedOut() {
   authPanel.hidden = false;
   dashboardPanel.hidden = true;
@@ -865,6 +991,14 @@ function accountRedirectUrl() {
   redirectUrl.hash = "";
   redirectUrl.search = "";
   return redirectUrl.href;
+}
+
+function adminDashboardUrl() {
+  if (window.location.hostname === "www.fixam9ja.com" || window.location.hostname === "fixam9ja.com") {
+    return `${window.location.origin}/admin`;
+  }
+
+  return new URL("admin.html", window.location.href).href;
 }
 
 function formatNaira(value) {

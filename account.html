@@ -6,6 +6,8 @@
     <title>FixAm 9ja Accounts</title>
     <meta name="robots" content="noindex" />
     <link rel="icon" href="fixam-logo.jpg" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <meta name="theme-color" content="#064c48" />
     <link rel="stylesheet" href="account.css?v=20260815-app-ready" />
     <link rel="stylesheet" href="help-widget.css?v=20260815-app-ready" />
   </head>
@@ -184,6 +186,29 @@
             <button class="primary-action" type="button" id="portfolioUploadButton">Upload to profile</button>
             <div class="record-list media-list" id="mediaList"></div>
           </section>
+          <section class="account-card account-card-wide">
+            <div class="card-title-row">
+              <h3>Notifications</h3>
+              <span class="notification-badge" id="notificationBadge">0</span>
+            </div>
+            <div class="notification-preferences">
+              <label><input id="notifyInApp" type="checkbox" checked /> In-app updates</label>
+              <label><input id="notifyEmail" type="checkbox" checked /> Email updates</label>
+              <label><input id="notifyPush" type="checkbox" /> Push notifications</label>
+              <button class="secondary-action" type="button" id="saveNotificationPreferences">Save preferences</button>
+            </div>
+            <div class="record-list" id="notificationList"></div>
+          </section>
+          <section class="account-card account-card-wide privacy-card">
+            <h3>Privacy and account</h3>
+            <p>Control your personal information and FixAm 9ja account.</p>
+            <div class="privacy-actions">
+              <a class="secondary-action" href="privacy.html">Read privacy policy</a>
+              <a class="secondary-action" href="account-deletion.html">Account deletion information</a>
+              <a class="secondary-action" href="mailto:support@fixam9ja.com?subject=FixAm%209ja%20account%20support">Contact account support</a>
+              <button class="danger-action" type="button" id="openDeleteAccount">Delete my account</button>
+            </div>
+          </section>
         </div>
       </section>
     </main>
@@ -199,11 +224,34 @@
       <div class="quote-dialog-body" id="quoteDialogBody"></div>
     </dialog>
 
+    <dialog class="quote-dialog deletion-dialog" id="deleteAccountDialog">
+      <div class="quote-dialog-header">
+        <div>
+          <p class="eyebrow">Privacy control</p>
+          <h2>Delete your FixAm 9ja account?</h2>
+        </div>
+        <button class="secondary-action" type="button" id="closeDeleteAccount">Close</button>
+      </div>
+      <div class="quote-dialog-body">
+        <p>This permanently removes your login, profile and private uploads. Marketplace records that must be retained for fraud prevention, disputes or legal compliance will be anonymised.</p>
+        <label>
+          <span>Type DELETE to confirm</span>
+          <input id="deleteAccountConfirmation" type="text" autocomplete="off" />
+        </label>
+        <label class="consent-row">
+          <input id="deleteAccountAcknowledgement" type="checkbox" />
+          <span>I understand this action cannot be undone.</span>
+        </label>
+        <p class="form-note" id="deleteAccountNote"></p>
+        <button class="danger-action" type="button" id="confirmDeleteAccount">Permanently delete account</button>
+      </div>
+    </dialog>
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="location-data.js?v=20260814-map"></script>
     <script src="supabase-config.js?v=20260814"></script>
-    <script src="account.js?v=20260815-account-status"></script>
-    <script src="help-widget.js?v=20260815-app-ready"></script>
+    <script src="account.js?v=20260827-admin-routing"></script>
+    <script src="help-widget.js?v=20260823-mailboxes"></script>
   </body>
 </html>
 

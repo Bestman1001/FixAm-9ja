@@ -729,6 +729,18 @@ textarea:focus {
     overflow-wrap: anywhere;
   }
 
+  .notification-preferences,
+  .privacy-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .notification-preferences .secondary-action,
+  .privacy-actions > * {
+    width: 100%;
+    text-align: center;
+  }
+
   .dashboard-panel {
     padding-bottom: max(18px, env(safe-area-inset-bottom));
   }
@@ -748,6 +760,67 @@ textarea:focus {
   .session-actions span {
     flex: 1 1 140px;
   }
+}
+
+.account-card-wide {
+  grid-column: 1 / -1;
+}
+
+.notification-preferences,
+.privacy-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 12px 0;
+}
+
+.notification-preferences label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 750;
+}
+
+.notification-preferences input,
+.consent-row input {
+  width: 20px;
+  height: 20px;
+  min-height: 0;
+}
+
+.danger-action {
+  min-height: 44px;
+  padding: 10px 16px;
+  border: 1px solid #a72f32;
+  border-radius: 9px;
+  background: #8f2529;
+  color: #fff;
+  font: inherit;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.danger-action:hover,
+.danger-action:focus-visible {
+  background: #731b1f;
+}
+
+.deletion-dialog .quote-dialog-body {
+  display: grid;
+  gap: 16px;
+}
+
+.deletion-dialog label:not(.consent-row) {
+  display: grid;
+  gap: 7px;
+  font-weight: 800;
+}
+
+.consent-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
 }
 
 @media (max-width: 380px) {
