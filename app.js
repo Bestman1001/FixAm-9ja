@@ -217,9 +217,12 @@ const joinBackButton = document.querySelector("#joinBackButton");
 const joinStepLabel = document.querySelector("#joinStepLabel");
 const joinStepTitle = document.querySelector("#joinStepTitle");
 const joinProgressBar = document.querySelector("#joinProgressBar");
+const joinOtpField = document.querySelector("#joinOtpField");
+const joinOtpInput = document.querySelector("#joinOtp");
 let selectedQuoteArtisan = null;
 let showAllServices = false;
 let joinStep = 1;
+let joinOtpRequestedFor = "";
 
 const supabaseSettings = window.FIXAM_SUPABASE || {};
 const supabaseClient =
@@ -515,7 +518,7 @@ function renderCards(matches) {
 
 function initializeJoinSteps() {
   const stepByField = {
-    joinName: 1, joinEmail: 1, joinPhone: 1,
+    joinName: 1, joinEmail: 1, joinPhone: 1, joinOtp: 1,
     joinTrade: 2, joinState: 2, joinArea: 2, joinTown: 2, joinExperience: 2, joinDetails: 2,
     joinPlan: 3, joinMedia: 3,
     joinNin: 4, joinNinConsent: 4,
@@ -532,12 +535,16 @@ function showJoinStep(step) {
   joinForm.querySelectorAll("[data-join-step]").forEach((field) => {
     field.hidden = Number(field.dataset.joinStep) !== joinStep;
   });
+  joinOtpField.hidden = joinStep !== 1 || !joinOtpRequestedFor;
   joinStepLabel.textContent = `Step ${joinStep} of 4`;
   joinStepTitle.textContent = titles[joinStep - 1];
   joinProgressBar.style.width = `${joinStep * 25}%`;
   joinBackButton.hidden = joinStep === 1;
   joinNextButton.hidden = joinStep === 4;
   joinSubmitButton.hidden = joinStep !== 4;
+  joinNextButton.textContent = joinStep === 1 && joinOtpRequestedFor
+    ? "Verify and continue"
+    : "Continue";
 }
 
 function currentJoinStepIsValid() {
@@ -547,11 +554,124 @@ function currentJoinStepIsValid() {
   return !invalid;
 }
 
-joinNextButton.addEventListener("click", () => {
-  if (currentJoinStepIsValid()) showJoinStep(joinStep + 1);
+joinNextButton.addEventListener("click", async () => {
+  if (!currentJoinStepIsValid()) return;
+  if (joinStep === 1 && !(await ensureInlineArtisanSession())) return;
+  showJoinStep(joinStep + 1);
 });
 
 joinBackButton.addEventListener("click", () => showJoinStep(joinStep - 1));
+
+document.querySelector("#joinEmail").addEventListener("input", () => {
+  const email = document.querySelector("#joinEmail").value.trim().toLowerCase();
+  if (email === joinOtpRequestedFor) return;
+  joinOtpRequestedFor = "";
+  joinOtpInput.value = "";
+  joinOtpInput.required = false;
+  joinOtpField.hidden = true;
+  joinNextButton.textContent = "Continue";
+});
+
+async function ensureInlineArtisanSession() {
+  if (!supabaseClient) {
+    setJoinStatus("The account service is unavailable. Try again shortly.", "error");
+    return false;
+  }
+
+  const fullName = document.querySelector("#joinName").value.trim();
+  const email = document.querySelector("#joinEmail").value.trim().toLowerCase();
+  const phone = normalizeNigerianPhone(document.querySelector("#joinPhone").value.trim());
+  const { data: sessionData } = await supabaseClient.auth.getSession();
+  const signedInUser = sessionData.session?.user;
+
+  if (signedInUser) {
+    if (signedInUser.email?.toLowerCase() !== email) {
+      setJoinStatus(`You are signed in as ${signedInUser.email}. Use that email here or sign out from Account first.`, "error");
+      return false;
+    }
+    try {
+      await saveInlineArtisanProfile(signedInUser, { fullName, email, phone });
+    } catch (error) {
+      setJoinStatus(error.message || "The artisan account could not be prepared.", "error");
+      return false;
+    }
+    joinOtpRequestedFor = "";
+    joinOtpInput.value = "";
+    joinOtpInput.required = false;
+    setJoinStatus("Artisan account confirmed. Continue with your business details.", "success");
+    return true;
+  }
+
+  if (joinOtpRequestedFor !== email) {
+    joinNextButton.disabled = true;
+    joinNextButton.textContent = "Sending code...";
+    const { error } = await supabaseClient.auth.signInWithOtp({
+      email,
+      options: {
+        shouldCreateUser: true,
+        data: { full_name: fullName, phone, role: "artisan" },
+      },
+    });
+    joinNextButton.disabled = false;
+    if (error) {
+      joinNextButton.textContent = "Continue";
+      setJoinStatus(`We could not send the verification code: ${error.message}`, "error");
+      return false;
+    }
+
+    joinOtpRequestedFor = email;
+    joinOtpInput.required = true;
+    joinOtpField.hidden = false;
+    joinNextButton.textContent = "Verify and continue";
+    setJoinStatus(`A six-digit verification code was sent to ${email}. Enter it above to continue.`, "success");
+    joinOtpInput.focus();
+    return false;
+  }
+
+  const token = joinOtpInput.value.trim();
+  if (!/^\d{6}$/.test(token)) {
+    joinOtpInput.reportValidity();
+    setJoinStatus("Enter the six-digit code sent to your email.", "error");
+    return false;
+  }
+
+  joinNextButton.disabled = true;
+  joinNextButton.textContent = "Verifying...";
+  const { data, error } = await supabaseClient.auth.verifyOtp({ email, token, type: "email" });
+  joinNextButton.disabled = false;
+  joinNextButton.textContent = "Verify and continue";
+  if (error || !data.user) {
+    setJoinStatus(`The verification code could not be confirmed: ${error?.message || "Try requesting a new code."}`, "error");
+    return false;
+  }
+
+  try {
+    await saveInlineArtisanProfile(data.user, { fullName, email, phone });
+  } catch (profileError) {
+    setJoinStatus(profileError.message || "The artisan account could not be prepared.", "error");
+    return false;
+  }
+  joinOtpRequestedFor = "";
+  joinOtpInput.value = "";
+  joinOtpInput.required = false;
+  setJoinStatus("Email verified and artisan account created. Continue with your business details.", "success");
+  return true;
+}
+
+async function saveInlineArtisanProfile(user, { fullName, email, phone }) {
+  const { error } = await supabaseClient.from("user_profiles").upsert(
+    {
+      user_id: user.id,
+      email,
+      full_name: fullName,
+      phone,
+      role: "artisan",
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id" },
+  );
+  if (error) throw new Error(`Artisan profile could not be saved: ${error.message}`);
+}
 
 function renderMap(matches) {
   markers.forEach((marker) => marker.remove());
