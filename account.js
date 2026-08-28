@@ -983,14 +983,7 @@ function phoneKey(value) {
 }
 
 function accountRedirectUrl() {
-  if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
-    return productionAccountUrl;
-  }
-
-  const redirectUrl = new URL("account.html", window.location.href);
-  redirectUrl.hash = "";
-  redirectUrl.search = "";
-  return redirectUrl.href;
+  return productionAccountUrl;
 }
 
 function adminDashboardUrl() {
