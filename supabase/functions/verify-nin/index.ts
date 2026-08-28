@@ -1,7 +1,9 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": Deno.env.get("APP_ORIGIN") || "https://bestman1001.github.io",
+  // This endpoint is called from both the apex and www production domains.
+  // Access is still enforced below with a valid Supabase JWT and application ownership check.
+  "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
