@@ -13,6 +13,7 @@ const artisanProfileForm = document.querySelector("#artisanProfileForm");
 const authNote = document.querySelector("#authNote");
 const dashboardNote = document.querySelector("#dashboardNote");
 const sessionEmail = document.querySelector("#sessionEmail");
+const adminPortalLink = document.querySelector("#adminPortalLink");
 const signOutButton = document.querySelector("#signOutButton");
 const magicLinkButton = document.querySelector("#magicLinkButton");
 const refreshButton = document.querySelector("#refreshButton");
@@ -309,9 +310,10 @@ async function loadDashboard(note = null) {
     .select("user_id")
     .eq("user_id", currentUser.id)
     .maybeSingle();
-  if (!adminProfileError && adminProfile) {
-    window.location.replace(adminDashboardUrl());
-    return;
+  const isAdministrator = !adminProfileError && Boolean(adminProfile);
+  if (adminPortalLink) {
+    adminPortalLink.hidden = !isAdministrator;
+    if (isAdministrator) adminPortalLink.href = adminDashboardUrl();
   }
 
   authPanel.hidden = true;
@@ -906,6 +908,7 @@ function setSignedOut() {
   signOutButton.hidden = true;
   document.body.classList.remove("is-signed-in");
   sessionEmail.textContent = "Signed out";
+  if (adminPortalLink) adminPortalLink.hidden = true;
   currentUser = null;
   currentProfile = null;
   ownedArtisan = null;
