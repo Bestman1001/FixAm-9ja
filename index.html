@@ -190,8 +190,8 @@
             <input id="joinEmail" type="email" autocomplete="email" placeholder="you@example.com" required />
           </label>
           <label id="joinOtpField" hidden>
-            <span>Six-digit email code</span>
-            <input id="joinOtp" type="text" inputmode="numeric" autocomplete="one-time-code" minlength="6" maxlength="6" pattern="[0-9]{6}" placeholder="Enter the code from your email" />
+            <span>Eight-digit email code</span>
+            <input id="joinOtp" type="text" inputmode="numeric" autocomplete="one-time-code" minlength="8" maxlength="8" pattern="[0-9]{8}" placeholder="Enter the code from your email" />
             <small>Enter the code here to create or sign in to your artisan account without leaving this application.</small>
           </label>
           <label>
@@ -323,7 +323,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="location-data.js?v=20260814-map"></script>
     <script src="supabase-config.js?v=20260814"></script>
-    <script src="app.js?v=20260828-inline-otp"></script>
+    <script src="app.js?v=20260830-eight-digit-otp"></script>
     <script src="help-widget.js?v=20260823-mailboxes"></script>
   </body>
 </html>

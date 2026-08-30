@@ -623,15 +623,15 @@ async function ensureInlineArtisanSession() {
     joinOtpInput.required = true;
     joinOtpField.hidden = false;
     joinNextButton.textContent = "Verify and continue";
-    setJoinStatus(`A six-digit verification code was sent to ${email}. Enter it above to continue.`, "success");
+    setJoinStatus(`An eight-digit verification code was sent to ${email}. Enter it above to continue.`, "success");
     joinOtpInput.focus();
     return false;
   }
 
   const token = joinOtpInput.value.trim();
-  if (!/^\d{6}$/.test(token)) {
+  if (!/^\d{8}$/.test(token)) {
     joinOtpInput.reportValidity();
-    setJoinStatus("Enter the six-digit code sent to your email.", "error");
+    setJoinStatus("Enter the eight-digit code sent to your email.", "error");
     return false;
   }
 
