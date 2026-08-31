@@ -131,6 +131,25 @@ p {
   border: 1px solid var(--line);
 }
 
+.danger-action {
+  min-height: 42px;
+  padding: 0 16px;
+  border: 1px solid rgba(255, 155, 129, 0.5);
+  border-radius: 8px;
+  background: rgba(142, 42, 36, 0.2);
+  color: #ffd8cd;
+  font-weight: 850;
+}
+
+.danger-action:hover:not(:disabled) {
+  background: rgba(142, 42, 36, 0.38);
+}
+
+.danger-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .admin-shell {
   padding: clamp(24px, 4vw, 48px);
 }

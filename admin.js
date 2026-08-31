@@ -198,6 +198,11 @@ function refreshStatusOptions() {
 }
 
 quoteList.addEventListener("click", async (event) => {
+  const removeButton = event.target.closest("[data-remove-quote]");
+  if (removeButton) {
+    await retireAdminRecord("quote", removeButton.dataset.removeQuote);
+    return;
+  }
   const button = event.target.closest("[data-review-link]");
   if (!button) return;
 
@@ -219,6 +224,11 @@ applicationList.addEventListener("change", async (event) => {
 });
 
 applicationList.addEventListener("click", async (event) => {
+  const removeButton = event.target.closest("[data-remove-application]");
+  if (removeButton) {
+    await retireAdminRecord("application", removeButton.dataset.removeApplication);
+    return;
+  }
   const button = event.target.closest("[data-create-artisan]");
   if (!button) return;
   await createArtisanFromApplication(button.dataset.createArtisan);
@@ -267,6 +277,12 @@ qualityList.addEventListener("change", async (event) => {
   const reason = requestActionReason(`Change artisan standing to ${select.value}`);
   if (!reason) return renderDashboard();
   await updateArtisanStanding(Number(select.dataset.artisanStanding), select.value, reason);
+});
+
+profileList.addEventListener("click", async (event) => {
+  const button = event.target.closest("[data-remove-artisan]");
+  if (!button) return;
+  await retireAdminRecord("artisan", Number(button.dataset.removeArtisan));
 });
 
 overviewList.addEventListener("click", (event) => {
@@ -742,6 +758,9 @@ function renderQuoteCard(quote) {
           </select>
         </label>
         <button class="secondary-action" type="button" data-review-link="${quote.id}">Copy review link</button>
+        <button class="danger-action" type="button" data-remove-quote="${quote.id}"${quote.status === "cancelled" ? " disabled" : ""}>
+          ${quote.status === "cancelled" ? "Request removed" : "Remove request"}
+        </button>
         ${quote.review_token ? `<p class="mini-note">Review link ready</p>` : `<p class="mini-note">Creates one-time customer link</p>`}
       </div>
     </article>
@@ -787,6 +806,9 @@ function renderApplicationCard(application) {
           existingProfile ? " disabled" : ""
         }>
           ${existingProfile ? "Profile created" : "Create artisan profile"}
+        </button>
+        <button class="danger-action" type="button" data-remove-application="${application.id}"${application.status === "rejected" ? " disabled" : ""}>
+          ${application.status === "rejected" ? "Application removed" : "Remove application"}
         </button>
         <p class="mini-note">${
           existingProfile
@@ -857,6 +879,9 @@ function renderArtisanCard(artisan) {
             ${subscriptionStatuses.map((status) => option(status, artisan.subscription_status)).join("")}
           </select>
         </label>
+        <button class="danger-action" type="button" data-remove-artisan="${artisan.id}"${artisan.profile_status === "removed" ? " disabled" : ""}>
+          ${artisan.profile_status === "removed" ? "Profile removed" : "Remove profile"}
+        </button>
       </div>
     </article>
   `;
@@ -1432,6 +1457,31 @@ function requestActionReason(action) {
     return "";
   }
   return window.confirm(`${action}?\n\nReason: ${reason}`) ? reason : "";
+}
+
+async function retireAdminRecord(kind, id) {
+  const definitions = {
+    quote: { table: "quote_requests", field: "status", value: "cancelled", rows: quotes, label: "request" },
+    application: { table: "artisan_applications", field: "status", value: "rejected", rows: applications, label: "application" },
+    artisan: { table: "artisans", field: "profile_status", value: "removed", rows: artisans, label: "artisan profile" },
+  };
+  const definition = definitions[kind];
+  if (!definition) return;
+
+  const reason = requestActionReason(`Remove this ${definition.label} from active operations`);
+  if (!reason) return renderDashboard();
+
+  setNote(dashboardNote, `Removing ${definition.label}...`, "");
+  const payload = { [definition.field]: definition.value };
+  if (kind === "artisan") payload.updated_at = new Date().toISOString();
+  const { error } = await supabaseClient.from(definition.table).update(payload).eq("id", id);
+  if (error) return setNote(dashboardNote, error.message, "error");
+
+  const row = definition.rows.find((item) => String(item.id) === String(id));
+  if (row) Object.assign(row, payload);
+  await recordAdminReason(`${kind}_removed`, definition.table, id, reason, payload);
+  setNote(dashboardNote, `${titleCase(definition.label)} removed. The record remains recoverable in the audit trail.`, "success");
+  renderDashboard();
 }
 
 async function recordAdminReason(action, entityType, entityId, reason, newData = {}) {
