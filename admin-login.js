@@ -1,4 +1,5 @@
 const loginSettings = window.FIXAM_SUPABASE || {};
+const FIXAM_SUPER_ADMIN_EMAIL = "bestman@obaxinnovationslimited.com";
 const loginClient =
   window.supabase && loginSettings.url && loginSettings.anonKey
     ? window.supabase.createClient(loginSettings.url, loginSettings.anonKey)
@@ -25,6 +26,10 @@ loginForm.addEventListener("submit", async (event) => {
     setLoginNote("Enter your password, or use the secure email link.", "error");
     return;
   }
+  if (email.toLowerCase() !== FIXAM_SUPER_ADMIN_EMAIL) {
+    setLoginNote("This email is not authorised for FixAm super-admin access.", "error");
+    return;
+  }
 
   setLoginNote("Checking admin access...", "");
   const { error } = await loginClient.auth.signInWithPassword({ email, password });
@@ -42,6 +47,10 @@ magicLinkButton.addEventListener("click", async () => {
   const email = loginEmail.value.trim();
   if (!email) {
     setLoginNote("Enter your admin email first.", "error");
+    return;
+  }
+  if (email.toLowerCase() !== FIXAM_SUPER_ADMIN_EMAIL) {
+    setLoginNote("This email is not authorised for FixAm super-admin access.", "error");
     return;
   }
 
@@ -75,6 +84,11 @@ async function continueIfAdmin() {
   } = await loginClient.auth.getSession();
 
   if (!session) return;
+  if (session.user.email?.toLowerCase() !== FIXAM_SUPER_ADMIN_EMAIL) {
+    await loginClient.auth.signOut();
+    setLoginNote("This account is not authorised for FixAm super-admin access.", "error");
+    return;
+  }
 
   const { data, error } = await loginClient
     .from("admin_profiles")

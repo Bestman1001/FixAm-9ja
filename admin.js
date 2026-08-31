@@ -15,6 +15,7 @@ const serviceStatuses = ["active", "paused", "removed"];
 const reviewVisibilityStatuses = ["public", "flagged", "hidden"];
 const artisanStandingStatuses = ["active", "warning", "suspended", "removed"];
 const accountStatuses = ["active", "restricted", "suspended"];
+const SUPER_ADMIN_EMAIL = "bestman@obaxinnovationslimited.com";
 const statusesByView = {
   overview: [], users: accountStatuses, verification: identityVerificationStatuses,
   quotes: quoteStatuses, applications: applicationStatuses, subscriptions: subscriptionStatuses,
@@ -110,6 +111,7 @@ let auditEvents = [];
 let userCounts = { total: 0, artisans: 0, customers: 0 };
 let metricCounts = null;
 let activeView = "overview";
+let isSuperAdmin = false;
 
 states.forEach((state) => stateFilter.add(new Option(state, state)));
 refreshStatusOptions();
@@ -298,6 +300,19 @@ userList.addEventListener("change", async (event) => {
   await updateUserStatus(select.dataset.userStatus, select.value, reason);
 });
 
+userList.addEventListener("submit", async (event) => {
+  const form = event.target.closest("[data-create-user-form]");
+  if (!form) return;
+  event.preventDefault();
+  await createManagedUser(form);
+});
+
+userList.addEventListener("click", async (event) => {
+  const button = event.target.closest("[data-delete-user]");
+  if (!button) return;
+  await deleteManagedUser(button.dataset.deleteUser, button.dataset.deleteUserEmail);
+});
+
 verificationList.addEventListener("change", async (event) => {
   const select = event.target.closest("[data-verification-status]");
   if (!select) return;
@@ -334,6 +349,7 @@ async function loadDashboard() {
   authPanel.hidden = true;
   dashboardPanel.hidden = false;
   sessionEmail.textContent = session.user.email || "Signed in";
+  isSuperAdmin = session.user.email?.toLowerCase() === SUPER_ADMIN_EMAIL;
   signOutButton.hidden = false;
 
   const [quoteResult, applicationResult, subscriptionResult, serviceResult, artisanResult, reviewResult, qualityResult, totalUsersResult, artisanUsersResult, customerUsersResult, userProfilesResult, auditResult] =
@@ -451,7 +467,11 @@ function renderDashboard() {
   ).filter((application) => statusFilter.value === "all" || application.identity_verification_status === statusFilter.value));
 
   overviewList.innerHTML = renderOverviewQueues();
-  userList.innerHTML = filteredUsers.length ? filteredUsers.map(renderUserCard).join("") : '<article class="empty-state">No users match the current search.</article>';
+  userList.innerHTML = `${isSuperAdmin ? renderUserManager() : ""}${
+    filteredUsers.length
+      ? filteredUsers.map(renderUserCard).join("")
+      : '<article class="empty-state">No users match the current search.</article>'
+  }`;
   verificationList.innerHTML = verificationRows.length ? verificationRows.map(renderVerificationCard).join("") : '<article class="empty-state">No verification cases match the current filters.</article>';
   auditList.innerHTML = filteredAudit.length ? filteredAudit.map(renderAuditCard).join("") : '<article class="empty-state">No audit events match the current search.</article>';
 
@@ -511,10 +531,25 @@ function renderOverviewQueues() {
 }
 
 function renderUserCard(user) {
+  const protectedAccount = user.email?.toLowerCase() === SUPER_ADMIN_EMAIL;
   return `<article class="work-card"><div><div class="badge-row"><span class="badge gold">${escapeHtml(user.role)}</span><span class="badge">${escapeHtml(user.account_status || "active")}</span><span class="badge">Joined ${formatDate(user.created_at)}</span></div>
     <h3>${escapeHtml(user.full_name)}</h3><p>${escapeHtml(user.email)} · ${escapeHtml(user.phone || "No phone")}</p>
     ${user.status_reason ? `<p class="mini-note">Reason: ${escapeHtml(user.status_reason)}</p>` : ""}</div>
-    <div class="work-actions"><label><span>Account status</span><select data-user-status="${user.user_id}">${accountStatuses.map((status) => option(status, user.account_status || "active")).join("")}</select></label></div></article>`;
+    <div class="work-actions">${isSuperAdmin ? `<label><span>Account status</span><select data-user-status="${user.user_id}"${protectedAccount ? " disabled" : ""}>${accountStatuses.map((status) => option(status, user.account_status || "active")).join("")}</select></label>` : '<p class="mini-note">User administration is restricted to the super-admin.</p>'}
+    ${isSuperAdmin ? `<button class="danger-action" type="button" data-delete-user="${user.user_id}" data-delete-user-email="${escapeHtml(user.email)}"${protectedAccount ? " disabled" : ""}>${protectedAccount ? "Protected super-admin" : "Delete user"}</button>` : ""}</div></article>`;
+}
+
+function renderUserManager() {
+  return `<article class="work-card user-manager-card"><div><p class="eyebrow">Super-admin automation</p><h3>Add a customer or artisan</h3>
+    <p>The user receives a secure invitation email and completes their own sign-in. No password is handled by an administrator.</p></div>
+    <form class="work-actions" data-create-user-form>
+      <label><span>Full name</span><input name="full_name" required /></label>
+      <label><span>Email</span><input name="email" type="email" required /></label>
+      <label><span>Phone</span><input name="phone" type="tel" /></label>
+      <label><span>Role</span><select name="role"><option value="customer">Customer</option><option value="artisan">Artisan</option></select></label>
+      <label><span>Reason</span><input name="reason" value="Created by super-admin" required /></label>
+      <button class="primary-action" type="submit">Invite user</button>
+    </form></article>`;
 }
 
 function renderVerificationCard(application) {
@@ -1155,6 +1190,11 @@ async function createArtisanFromApplication(applicationId) {
     ({ data, error } = await supabaseClient.from("artisans").insert(payload).select().single());
   }
 
+  if (session.user.email?.toLowerCase() !== SUPER_ADMIN_EMAIL) {
+    await supabaseClient.auth.signOut();
+    return;
+  }
+
   if (error) {
     setNote(dashboardNote, error.message, "error");
     return;
@@ -1389,6 +1429,7 @@ function setSignedOut() {
   dashboardPanel.hidden = true;
   sessionEmail.textContent = "Signed out";
   signOutButton.hidden = true;
+  isSuperAdmin = false;
 }
 
 function shouldRedirectToAdminLogin() {
@@ -1509,6 +1550,45 @@ async function updateUserStatus(userId, status, reason) {
   await recordAdminReason("account_status_changed", "user_profiles", userId, reason, payload);
   setNote(dashboardNote, "User account status updated.", "success");
   renderDashboard();
+}
+
+async function createManagedUser(form) {
+  if (!isSuperAdmin) return setNote(dashboardNote, "Super-admin access is required.", "error");
+  const button = form.querySelector('button[type="submit"]');
+  button.disabled = true;
+  button.textContent = "Sending invitation...";
+  const { data, error } = await supabaseClient.functions.invoke("admin-manage-users", {
+    body: {
+      action: "create",
+      full_name: form.elements.full_name.value.trim(),
+      email: form.elements.email.value.trim().toLowerCase(),
+      phone: form.elements.phone.value.trim(),
+      role: form.elements.role.value,
+      reason: form.elements.reason.value.trim(),
+    },
+  });
+  button.disabled = false;
+  button.textContent = "Invite user";
+  if (error || data?.error) return setNote(dashboardNote, data?.error || error?.message || "User invitation failed.", "error");
+  form.reset();
+  setNote(dashboardNote, "User created and secure invitation sent.", "success");
+  await loadDashboard();
+}
+
+async function deleteManagedUser(userId, email) {
+  if (!isSuperAdmin) return setNote(dashboardNote, "Super-admin access is required.", "error");
+  const reason = window.prompt(`Delete ${email}?\n\nEnter the operational reason for the audit log:`)?.trim();
+  if (!reason) return setNote(dashboardNote, "Deletion cancelled. A reason is required.", "error");
+  const confirmation = window.prompt(`This permanently deletes the login and anonymises linked personal data.\n\nType DELETE to confirm:`)?.trim();
+  if (confirmation !== "DELETE") return setNote(dashboardNote, "Deletion cancelled.", "error");
+
+  setNote(dashboardNote, `Deleting ${email}...`, "");
+  const { data, error } = await supabaseClient.functions.invoke("admin-manage-users", {
+    body: { action: "delete", user_id: userId, reason, confirmation },
+  });
+  if (error || data?.error) return setNote(dashboardNote, data?.error || error?.message || "User deletion failed.", "error");
+  setNote(dashboardNote, `${email} was deleted and linked personal data was anonymised.`, "success");
+  await loadDashboard();
 }
 
 async function updateApplicationVerification(applicationId, status, reason) {

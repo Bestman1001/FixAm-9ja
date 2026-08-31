@@ -3,3 +3,6 @@ verify_jwt = false
 
 [functions.qoreid-webhook]
 verify_jwt = false
+
+[functions.admin-manage-users]
+verify_jwt = true
