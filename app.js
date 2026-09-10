@@ -1412,7 +1412,12 @@ async function createSubscriptionRequest(action, button) {
   window.location.assign(url.href);
 }
 
+let currentQoreIdAction = null;
+let qoreIdCompleted = false;
+
 async function launchQoreIdCollection(action) {
+  currentQoreIdAction = action;
+  qoreIdCompleted = false;
   try {
     setJoinStatus("Opening secure QoreID identity check...", "");
     enterQoreIdMode();
@@ -1421,8 +1426,14 @@ async function launchQoreIdCollection(action) {
 
     if (typeof QoreID.on === "function" && !QoreID.__fixamListenersAttached) {
       QoreID.on("success", () => {
+        qoreIdCompleted = true;
         exitQoreIdMode();
-        setJoinStatus("Identity check completed. FixAm 9ja will confirm the verification result shortly.", "success");
+        const completedAction = currentQoreIdAction;
+        setJoinStatus("Identity check completed. Continue to subscription; checkout will become available once FixAm confirms the result. Do not repeat your paid identity check.", "success", {
+          applicationCode: completedAction.applicationCode,
+          plan: completedAction.plan,
+          amount: completedAction.amount,
+        });
       });
       QoreID.on("error", () => {
         exitQoreIdMode();
@@ -1430,7 +1441,8 @@ async function launchQoreIdCollection(action) {
       });
       QoreID.on("close", () => {
         exitQoreIdMode();
-        setJoinStatus("Identity check was closed before completion. You can start it again when ready.", "error", action);
+        if (qoreIdCompleted) return;
+        setJoinStatus("Identity check was closed. If you completed the check, view your account for its saved status before starting another check.", "", currentQoreIdAction);
       });
       QoreID.__fixamListenersAttached = true;
     }

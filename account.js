@@ -23,6 +23,7 @@ const quoteList = document.querySelector("#quoteList");
 const quoteLeadList = document.querySelector("#quoteLeadList");
 const quoteLeadBadge = document.querySelector("#quoteLeadBadge");
 const applicationList = document.querySelector("#applicationList");
+const artisanNextStep = document.querySelector("#artisanNextStep");
 const artisanProfile = document.querySelector("#artisanProfile");
 const mediaList = document.querySelector("#mediaList");
 const notificationList = document.querySelector("#notificationList");
@@ -392,7 +393,8 @@ async function loadDashboard(note = null) {
   renderQuotes(quotesResult.data || []);
   renderQuoteLeads(quoteLeadsResult.data || [], quoteLeadsResult.count || 0);
   renderApplications(applicationsResult.data || []);
-  renderArtisanProfile(artisansResult.data || []);
+  renderArtisanProfile(artisansResult.data || [], applicationsResult.data || []);
+  renderArtisanNextStep(applicationsResult.data || [], artisansResult.data || []);
   fillArtisanProfileForm();
   renderMedia(mediaResult.data || []);
   renderNotifications(notificationsResult.data || []);
@@ -752,7 +754,27 @@ function renderApplications(items) {
     : `<article><span>No artisan applications linked to this account yet.</span></article>`;
 }
 
-function renderArtisanProfile(items) {
+function renderArtisanNextStep(applications, artisans) {
+  artisanNextStep.hidden = currentProfile?.role !== "artisan";
+  if (artisanNextStep.hidden) return;
+  const application = applications[0];
+  const artisan = artisans[0];
+  if (!application && !artisan) {
+    artisanNextStep.innerHTML = '<h3>Start your artisan application</h3><p>Complete your business details and identity check to set up your membership.</p><a class="primary-action" href="index.html#join">Apply as an artisan</a>';
+    return;
+  }
+  const identity = application?.identity_verification_status || artisan?.identity_verification_status;
+  if (identity !== "verified") {
+    artisanNextStep.innerHTML = `<h3>${identity === "failed" ? "Identity verification needs attention" : "Waiting for your verification result"}</h3><p>${identity === "failed" ? "Contact verification support to review your existing check." : "Your application is linked to this account. If you completed QoreID, use Refresh to check for the result. You do not need to claim a profile or repeat a paid identity check."}</p><p>Subscription checkout becomes available once FixAm confirms your identity.</p><a href="mailto:verification@fixam9ja.com">Contact verification support</a>`;
+    return;
+  }
+  const url = new URL("billing.html", window.location.href);
+  if (application) url.searchParams.set("application", application.application_code);
+  url.searchParams.set("plan", application?.subscription_plan || artisan?.subscription_plan || "monthly");
+  artisanNextStep.innerHTML = `<h3>Identity verified — manage your membership</h3><p>Choose a subscription and agree to automatic renewal before continuing to secure Paystack checkout. Your application is already linked to your account.</p><a class="primary-action" href="${escapeHtml(url.href)}">Continue to subscription & payments</a>`;
+}
+
+function renderArtisanProfile(items, applications = []) {
   artisanProfile.innerHTML = items.length
     ? items
         .map(
@@ -770,9 +792,9 @@ function renderArtisanProfile(items) {
           `,
         )
         .join("")
-    : `<article><span>No claimed artisan profile yet. Use the claim button if your phone number matches a listed profile.</span></article>`;
+    : `<article><span>${applications.length ? "Your application is linked to this account. Your artisan profile will appear after verification is confirmed." : "No artisan profile linked yet. Start an application above, or claim an existing listed profile."}</span></article>`;
 
-  claimProfileButton.hidden = items.length > 0;
+  claimProfileButton.hidden = items.length > 0 || applications.length > 0;
   artisanProfileForm.hidden = !items.length;
 }
 
