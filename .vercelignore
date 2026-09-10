@@ -1,0 +1,7 @@
+tmp/
+output/
+tests/
+.pnpm-store/
+node_modules/
+.env
+.env.*

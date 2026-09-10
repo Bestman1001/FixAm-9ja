@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { cancelUserBilling } from "../_shared/paystack.ts";
 
 const allowedOrigin = Deno.env.get("APP_ORIGIN") || "https://bestman1001.github.io";
 const headers = {
@@ -28,6 +29,8 @@ Deno.serve(async (request) => {
   if (userError || !userData.user) return response({ error: "Session is invalid or expired" }, 401);
 
   const admin = createClient(url, serviceKey);
+  try { await cancelUserBilling(admin, userData.user.id); }
+  catch (error) { return response({ error: error instanceof Error ? error.message : "Cancel billing before account deletion." }, 409); }
   const { data: media } = await admin
     .from("media_uploads")
     .select("bucket, storage_path")

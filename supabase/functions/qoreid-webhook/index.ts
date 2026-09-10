@@ -127,7 +127,7 @@ Deno.serve(async (req) => {
       public_listing: ["active", "founding", "free_trial"].includes(artisan?.subscription_status || ""),
       message:
         status === "verified"
-          ? "Artisan identity verified. Founding launch listing is ready."
+          ? "Artisan identity verified. Marketplace visibility requires an eligible membership."
           : `Artisan identity verification is ${status}.`,
     });
   } catch (error) {
@@ -222,11 +222,12 @@ async function upsertVerifiedArtisan(
   const coords = coordinatesFor(application.state, lga);
   const subscriptionPlan = normalizeSubscriptionPlan(application.preferred_plan || application.subscription_plan);
   const subscriptionAmount = Number(application.subscription_amount || subscriptionAmountForPlan(subscriptionPlan));
-  const launchAccess = application.subscription_status === "active" ? "active" : "founding";
+  const launchAccess = ["active", "founding", "free_trial"].includes(application.subscription_status)
+    ? application.subscription_status : "pending";
   const checks = [
     "QoreID liveness verified",
     "NIN verified",
-    launchAccess === "founding" ? "Founding launch access" : "Subscription active",
+    launchAccess === "pending" ? "Subscription required" : "Membership access",
   ];
 
   const payload = {
@@ -419,8 +420,8 @@ function coordinatesFor(state: string, area: string) {
 
 function normalizeSubscriptionPlan(plan: string) {
   const value = String(plan || "").toLowerCase();
-  if (value.includes("annual") || value.includes("year")) return "annual";
   if (value.includes("biannual") || value.includes("6")) return "biannual";
+  if (value.includes("annual") || value.includes("year")) return "annual";
   return "monthly";
 }
 

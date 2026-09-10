@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { cancelUserBilling } from "../_shared/paystack.ts";
 
 const SUPER_ADMIN_EMAIL = "bestman@obaxinnovationslimited.com";
 const allowedOrigin = Deno.env.get("APP_ORIGIN") || "https://www.fixam9ja.com";
@@ -74,6 +75,8 @@ async function deleteUser(admin: ReturnType<typeof createClient>, callerId: stri
 
   const { data: targetData, error: targetError } = await admin.auth.admin.getUserById(userId);
   if (targetError || !targetData.user) return respond({ error: "User was not found" }, 404);
+  try { await cancelUserBilling(admin, userId); }
+  catch (error) { return respond({ error: error instanceof Error ? error.message : "Cancel billing before account deletion." }, 409); }
 
   const { data: media } = await admin.from("media_uploads").select("bucket, storage_path").eq("uploaded_by_user_id", userId);
   for (const bucket of [...new Set((media || []).map((item) => item.bucket))]) {

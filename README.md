@@ -39,8 +39,9 @@ FixAm 9ja is a map-first Nigerian artisan marketplace operated by ObaX Innovatio
 
 ## Supabase
 
-For a fresh environment, run `supabase/schema.sql`, `supabase/admin-automation.sql`, and
-`supabase/app-readiness.sql` in that order. Then configure the environment's Project URL and public
+For a fresh environment, run `supabase/schema.sql`, `supabase/admin-automation.sql`,
+`supabase/app-readiness.sql`, `supabase/qoreid-collection-readiness.sql`, and
+`supabase/admin-user-counts.sql`, and `supabase/paystack-billing.sql` in that order. Follow `APP-READINESS.md` for Edge Function deployment and release tests. Then configure the environment's Project URL and public
 anonymous key in `supabase-config.js`. Use separate development, staging and production projects.
 
 The public website can insert quote requests and artisan applications. Admin users can read and update them only after:
@@ -65,7 +66,7 @@ Phase 5 adds Supabase Auth account profiles and a public `fixam-media` Storage b
 
 ## Phase 7 Subscriptions
 
-Phase 7 adds subscription activation requests. After an artisan submits an application, FixAm can save a subscription request for the selected plan. Admin can review these requests from the Subscriptions tab and mark them active after payment confirmation. Public marketplace visibility still requires an active profile, verified identity, and active subscription.
+Phase 7 uses Paystack recurring card subscriptions. Verified artisans choose a plan on `billing.html`, pay through hosted checkout, view payment history, manage their card, and cancel future renewal. Server verification and signed webhooks activate paid access; duplicate events cannot extend the same payment twice. Public marketplace visibility still requires an active profile, verified identity, and eligible membership within its paid term. See `PAYSTACK-SETUP.md` for secrets, plans, migrations, deployment and live validation.
 
 ## Run Locally
 

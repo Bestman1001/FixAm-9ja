@@ -171,7 +171,7 @@ const originByArea = locationDirectory.centers || {
 const defaultStateName = "Lagos";
 const stateStorageKey = "fixam9ja.selectedState";
 const areaStorageKey = "fixam9ja.selectedArea";
-const foundingLaunchFree = true;
+const foundingLaunchFree = false;
 let activeOrigin = originByState[defaultStateName];
 let activeOriginLabel = null;
 let animateLgaFocus = false;
@@ -1204,6 +1204,7 @@ async function loadRealArtisans() {
       .eq("profile_status", "active")
       .eq("verification_status", "verified")
       .in("subscription_status", ["active", "founding", "free_trial"])
+      .or(`subscription_expires_at.is.null,subscription_expires_at.gt.${new Date().toISOString()}`)
       .order("business_name");
 
   let { data, error } = await fetchArtisans(`${legacyColumns}, lga, town`);
@@ -1374,7 +1375,7 @@ function setJoinStatus(message, type, action = "") {
     const subscriptionButton = document.createElement("button");
     subscriptionButton.type = "button";
     subscriptionButton.className = "status-action-link";
-    subscriptionButton.textContent = `Request subscription activation - ${formatNaira(action.amount)}`;
+    subscriptionButton.textContent = `Set up subscription - ${formatNaira(action.amount)}`;
     subscriptionButton.addEventListener("click", () => createSubscriptionRequest(action, subscriptionButton));
     joinNote.appendChild(document.createElement("br"));
     joinNote.appendChild(subscriptionButton);
@@ -1405,41 +1406,10 @@ async function retryIdentityVerification(action, button) {
 }
 
 async function createSubscriptionRequest(action, button) {
-  if (!supabaseClient) {
-    setJoinStatus("Subscription request is ready, but Supabase is not configured yet.", "error", action);
-    return;
-  }
-
-  button.disabled = true;
-  button.textContent = "Saving activation request...";
-  const requestCode = `F9-S-${Date.now().toString().slice(-6)}`;
-  const { error } = await supabaseClient.from("subscription_requests").insert({
-    request_code: requestCode,
-    application_code: action.applicationCode,
-    applicant_email: action.email,
-    applicant_user_id: await currentUserId(),
-    applicant_phone: action.phone,
-    applicant_name: action.fullName,
-    plan: action.plan || "monthly",
-    amount: Number(action.amount || 2500),
-    status: "pending",
-    channel: "manual_activation",
-    source: "website",
-  });
-
-  if (error) {
-    setJoinStatus(
-      `Subscription activation could not be saved yet: ${error.message}. Ask an administrator to check the subscription database setup, then try again.`,
-      "error",
-      action,
-    );
-    return;
-  }
-
-  setJoinStatus(
-    `Subscription activation request ${requestCode} saved. FixAm 9ja will confirm payment setup before public listing. Contact payments@fixam9ja.com for billing support.`,
-    "success",
-  );
+  const url = new URL("billing.html", window.location.href);
+  url.searchParams.set("application", action.applicationCode);
+  url.searchParams.set("plan", action.plan || "monthly");
+  window.location.assign(url.href);
 }
 
 async function launchQoreIdCollection(action) {

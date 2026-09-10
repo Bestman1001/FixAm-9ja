@@ -5,4 +5,13 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.admin-manage-users]
-verify_jwt = true
+verify_jwt = false
+
+[functions.delete-account]
+verify_jwt = false
+
+[functions.paystack-billing]
+verify_jwt = false
+
+[functions.paystack-webhook]
+verify_jwt = false

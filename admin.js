@@ -667,11 +667,11 @@ function renderSubscriptionCard(request) {
       <div class="work-actions">
         <label>
           <span>Activation</span>
-          <select data-subscription-status="${request.id}">
+          <select data-subscription-status="${request.id}" ${request.channel === "paystack" ? "disabled" : ""}>
             ${subscriptionStatuses.map((status) => option(status, request.status)).join("")}
           </select>
         </label>
-        <p class="mini-note">Founding/free trial/active access can unlock public listing when identity is verified.</p>
+        <p class="mini-note">${request.channel === "paystack" ? "Payment confirmation is managed by Paystack. Artisans manage renewal from their billing page." : "Founding/free trial/active access can unlock public listing when identity is verified."}</p>
       </div>
     </article>
   `;
@@ -1053,6 +1053,10 @@ async function updateStatus(table, id, status, field = "status", reason = "") {
 async function updateSubscriptionRequest(requestId, status, reason = "") {
   const request = subscriptionRequests.find((item) => item.id === requestId);
   if (!request) return;
+  if (request.channel === "paystack") {
+    setNote(dashboardNote, "Paystack subscriptions are updated through verified payments.", "error");
+    return;
+  }
 
   setNote(dashboardNote, "Updating subscription activation...", "");
   const payload = {
@@ -1170,7 +1174,7 @@ async function createArtisanFromApplication(applicationId) {
     verification_status: "pending",
     identity_verification_status: "pending",
     nin_last4: application.nin_last4 || null,
-    subscription_status: "founding",
+    subscription_status: application.subscription_status || "pending",
     subscription_plan: normalizeSubscriptionPlan(application.preferred_plan),
     subscription_amount: Number(application.subscription_amount || subscriptionAmountForPlan(application.preferred_plan)),
     bio: application.work_summary,
@@ -1618,8 +1622,8 @@ function normalizePlan(plan) {
 
 function normalizeSubscriptionPlan(plan) {
   const value = String(plan || "").toLowerCase();
-  if (value.includes("annual") || value.includes("year")) return "annual";
   if (value.includes("biannual") || value.includes("6")) return "biannual";
+  if (value.includes("annual") || value.includes("year")) return "annual";
   return "monthly";
 }
 

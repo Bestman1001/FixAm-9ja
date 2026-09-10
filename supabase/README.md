@@ -1,5 +1,7 @@
 # FixAm 9ja Supabase Setup
 
+For a complete environment, follow the migration order in `../APP-READINESS.md`, including `paystack-billing.sql` last. Running `schema.sql` alone does not configure recurring payments or the current account-deletion safeguards. See `../PAYSTACK-SETUP.md` for the Paystack plans, secrets, webhook and Function deployments.
+
 1. Open your Supabase project.
 2. Go to SQL Editor.
 3. Paste and run `supabase/schema.sql`.

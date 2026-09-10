@@ -11,7 +11,9 @@ function Require-File([string]$RelativePath) {
 @(
   "index.html", "account.html", "privacy.html", "account-deletion.html", "policies.html",
   "manifest.webmanifest", "sw.js", "supabase/app-readiness.sql",
-  "supabase/functions/delete-account/index.ts"
+  "supabase/functions/delete-account/index.ts", "billing.html", "billing.js", "billing.css",
+  "supabase/paystack-billing.sql", "supabase/functions/paystack-billing/index.ts",
+  "supabase/functions/paystack-webhook/index.ts"
 ) | ForEach-Object { Require-File $_ }
 
 $publicFiles = Get-ChildItem -LiteralPath $repoRoot -File | Where-Object { $_.Extension -in ".html", ".js", ".css", ".json", ".webmanifest" }

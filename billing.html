@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex" />
+    <title>Subscription & Payments | FixAm 9ja</title>
+    <link rel="icon" href="fixam-logo.jpg" />
+    <link rel="stylesheet" href="styles.css?v=20260823-mailboxes" />
+    <link rel="stylesheet" href="billing.css?v=20260910" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand brand-full" href="index.html" aria-label="FixAm 9ja home">
+        <img class="brand-full-logo" src="fixam-logo-header.png" alt="FixAm 9ja" />
+        <span class="brand-copy"><strong>FixAm 9ja</strong><small>Get it fixed near you.</small></span>
+      </a>
+      <nav class="nav-links" aria-label="Account navigation">
+        <a href="account.html">My account</a><a href="artisan-plans.html">Artisan plans</a><a href="help.html">Help</a>
+      </nav>
+    </header>
+    <main class="content-page billing-page">
+      <section class="document-hero">
+        <p class="eyebrow">Artisan membership</p>
+        <h1>Your subscription, on your terms.</h1>
+        <p>Pay securely with Paystack. Your membership renews automatically until you cancel.</p>
+        <p id="billingNote" class="form-note" role="status" aria-live="polite">Loading your subscription…</p>
+        <a id="billingSignIn" class="primary-action" href="account.html" hidden>Sign in to continue</a>
+      </section>
+      <section id="billingPanel" hidden>
+        <article class="document-card billing-summary">
+          <h2>Current membership</h2>
+          <p id="billingSummary"></p>
+          <div class="hero-actions">
+            <button id="refreshBilling" class="secondary-action" type="button">Refresh status</button>
+            <button id="verifyPayment" class="secondary-action" type="button" hidden>Check payment</button>
+            <button id="manageBilling" class="secondary-action" type="button" hidden>Manage card & subscription</button>
+            <button id="cancelBilling" class="secondary-action" type="button" hidden>Cancel automatic renewal</button>
+          </div>
+        </article>
+        <form id="billingForm" class="document-card">
+          <h2>Choose your membership</h2>
+          <label for="billingPlan">Billing period</label>
+          <select id="billingPlan" name="plan" required>
+            <option value="monthly">Monthly — ₦2,500 every month</option>
+            <option value="biannual">6 months — ₦12,000 every six months</option>
+            <option value="annual">Yearly — ₦24,000 every year</option>
+          </select>
+          <label class="billing-consent"><input id="billingConsent" type="checkbox" required />
+            <span id="billingConsentText">I agree to automatic renewal at the selected price until I cancel.</span>
+          </label>
+          <p>Cancel anytime to stop the next renewal. Your paid access lasts until the end of the current term. Identity verification and marketplace approval are still required.</p>
+          <p>By continuing, you agree to the <a href="policies.html">subscription and refund policies</a>.</p>
+          <button id="checkoutButton" class="primary-action" type="submit">Continue to Paystack</button>
+        </form>
+        <section class="document-card" aria-labelledby="paymentHistoryTitle">
+          <h2 id="paymentHistoryTitle">Payment history</h2>
+          <div id="paymentHistory"></div>
+        </section>
+      </section>
+      <p><a href="account.html">Back to my account</a></p>
+      <p>Need billing help? <a href="mailto:payments@fixam9ja.com">payments@fixam9ja.com</a></p>
+    </main>
+    <dialog id="cancelDialog" aria-labelledby="cancelTitle">
+      <h2 id="cancelTitle">Stop automatic renewal?</h2>
+      <p>Your membership will remain available through the end of your paid term. You will not be charged for the next renewal.</p>
+      <div class="hero-actions"><button id="keepSubscription" class="secondary-action" type="button">Keep subscription</button>
+      <button id="confirmCancellation" class="primary-action" type="button">Cancel renewal</button></div>
+    </dialog>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js?v=20260814"></script>
+    <script src="billing.js?v=20260910"></script>
+  </body>
+</html>

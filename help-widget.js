@@ -10,7 +10,7 @@
       title: "How artisans join FixAm 9ja",
       keywords: ["artisan", "register", "join", "onboarding", "profile"],
       answer:
-        "Use Join as Artisan, enter your email, trade, state, LGA/Area Council, town or neighbourhood, Nigerian phone number, NIN, selfie/liveness proof, experience, work summary, and portfolio media. Founding artisans can apply before paid subscriptions fully begin."
+        "Use Join as Artisan, enter your details and portfolio, and complete the secure identity check. After verification, open Subscription & Payments to choose a plan and pay through Paystack."
     },
     {
       title: "NIN and liveness verification",
@@ -40,7 +40,7 @@
       title: "Subscriptions and founding artisans",
       keywords: ["subscription", "payment", "plan", "monthly", "founding"],
       answer:
-        "Artisan membership options are shown on the dedicated Artisan Plans page and inside the artisan journey. Customers do not pay to find artisans or request quotes. Founding artisans can build trust and visibility before strict paid subscription enforcement begins."
+        "Artisan subscriptions renew automatically through Paystack: NGN 2,500 monthly, NGN 12,000 every six months, or NGN 24,000 yearly. Open Subscription & Payments from your account to pay, update your card, view payments, or cancel renewal. Cancellation keeps access through the paid term. Customers do not pay to find artisans or request quotes."
     },
     {
       title: "States, areas, and map location",

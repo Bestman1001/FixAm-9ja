@@ -36,10 +36,14 @@ Verify SPF, DKIM and DMARC for the authentication sending domain before sending 
 2. Apply `supabase/schema.sql` to a fresh project when provisioning.
 3. Apply `supabase/admin-automation.sql`.
 4. Apply `supabase/app-readiness.sql`.
-5. Deploy `verify-nin`, `qoreid-webhook` and `delete-account` Edge Functions.
-6. Configure allowed authentication redirect URLs for production and staging.
-7. Validate Row Level Security with separate customer, artisan, admin and anonymous sessions.
-8. Run `./scripts/verify-production.ps1` before deployment.
+5. Apply `supabase/qoreid-collection-readiness.sql` after `app-readiness.sql` so account-owned applications can use QoreID SDK liveness capture without a duplicate selfie upload.
+6. Apply `supabase/admin-user-counts.sql` to enable admin access to user totals.
+7. Deploy `verify-nin`, `qoreid-webhook`, `delete-account` and `admin-manage-users` Edge Functions. Set `APP_ORIGIN=https://www.fixam9ja.com` for production and the staging origin in staging.
+8. Configure allowed authentication redirect URLs for production and staging.
+9. Validate Row Level Security with separate customer, artisan, admin and anonymous sessions.
+10. Run `./scripts/verify-production.ps1` before deployment. These static checks do not establish that remote migrations, secrets, authentication or provider integrations are working; complete the release tests below in staging.
+
+For recurring subscriptions, then apply `supabase/paystack-billing.sql` last and complete `PAYSTACK-SETUP.md` before deploying the website. This includes the Paystack plans and secrets, both payment functions, and redeployment of the account-deletion, admin-user-management and QoreID webhook functions. Run `pnpm test` as well as the static release checks.
 
 ## Mandatory release tests
 
