@@ -18,3 +18,29 @@ test('failed liveness overrides completion and successful identity components',(
 test('explicit verified result is accepted without confusing live environment flag',()=>{
  assert.equal(status({status:{state:'COMPLETE',status:'VERIFIED'},isLive:true}),'verified');
 });
+
+// Only verdict fields from the support sample are retained: no identity data,
+// media URLs, photos or biometric blobs belong in a test fixture.
+const supportSample = {
+ eventType:'identity', customerReference:'test-reference',
+ metadata:{type:'nin',isLive:true,match:true},
+ summary:{liveness_check:{isLive:true,match:true},nin_check:{status:'PARTIAL_MATCH',fieldMatches:{firstname:true,lastname:true,phoneNumber:false}}},
+ status:{state:'complete',status:'verified'},liveness:{isLive:true,match:true}
+};
+test('QoreID support sample uses final verdict and biometric outcomes, not optional phone match',()=>{
+ assert.equal(status(supportSample),'verified');
+ for(const path of ['liveness','metadata']) {
+  const failed=structuredClone(supportSample); failed[path].isLive=false;
+  assert.equal(status(failed),'failed');
+ }
+ const mismatch=structuredClone(supportSample); mismatch.summary.liveness_check.match=false;
+ assert.equal(status(mismatch),'failed');
+ assert.equal(status({status:{status:'verified'},liveness:{isLive:true}}),'pending');
+});
+test('unsigned collection payload cannot be acknowledged as a readiness probe',()=>{
+ const probeCode=source.slice(source.indexOf('function isWebhookReadinessProbe('),source.indexOf('async function hasValidWebhookSignature('));
+ vm.runInContext(stripTypeScriptTypes(probeCode),context);
+ assert.equal(context.isWebhookReadinessProbe('{}'),true);
+ assert.equal(context.isWebhookReadinessProbe(JSON.stringify(supportSample)),false);
+ assert.equal(context.isWebhookReadinessProbe('{"status":{"status":"verified"}}'),false);
+});

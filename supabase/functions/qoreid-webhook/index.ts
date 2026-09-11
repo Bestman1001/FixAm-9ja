@@ -143,7 +143,7 @@ function isWebhookReadinessProbe(rawBody: string) {
     const payload = JSON.parse(value);
     if (!payload || typeof payload !== "object" || Array.isArray(payload)) return false;
     const source = payload as Record<string, unknown>;
-    return !source.event && !source.event_type && !source.data && !source.reference;
+    return Object.keys(source).length === 0;
   } catch (_error) {
     return false;
   }
@@ -312,6 +312,14 @@ function extractReferenceCandidates(payload: unknown): string[] {
 }
 
 function normalizeQoreIdStatus(payload: unknown) {
+  const source = payload && typeof payload === "object" ? payload as Record<string, any> : {};
+  // QoreID's NIN Liveness payload repeats these results in liveness,
+  // summary.liveness_check and metadata. isLive at the envelope level is
+  // not a biometric verdict and must not be used here.
+  const livenessResults = [source.liveness, source.summary?.liveness_check,
+    source.eventType === "identity" && source.metadata?.type === "nin" ? source.metadata : null]
+    .filter((value) => value && typeof value === "object");
+  if (livenessResults.some((value) => value.isLive === false || value.match === false)) return "failed";
   const text = JSON.stringify(payload).toLowerCase();
   const statusValues = extractStatusCandidates(payload).map((value) => value.toLowerCase().trim().replace(/[\s-]+/g, "_"));
 
@@ -325,6 +333,7 @@ function normalizeQoreIdStatus(payload: unknown) {
 
   // Completion and transport success do not establish a positive identity verdict.
   // A negative component takes precedence over any positive component above.
+  if (livenessResults.length && !livenessResults.some((value) => value.isLive === true && value.match === true)) return "pending";
   if (statusValues.some((value) => ["verified", "passed", "approved"].includes(value)) ||
       text.includes('"verified":true')) {
     return "verified";
