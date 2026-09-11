@@ -44,3 +44,19 @@ test('unsigned collection payload cannot be acknowledged as a readiness probe',(
  assert.equal(context.isWebhookReadinessProbe(JSON.stringify(supportSample)),false);
  assert.equal(context.isWebhookReadinessProbe('{"status":{"status":"verified"}}'),false);
 });
+
+const matchingCode = source.slice(source.indexOf('async function findApplicationByReferences('), source.indexOf('async function upsertVerifiedArtisan('));
+const matchingContext = vm.createContext({});
+vm.runInContext(stripTypeScriptTypes(matchingCode), matchingContext);
+test('collection application reference resolves the intended application', async () => {
+ const row = { application_code: 'F9-A-123456' };
+ const client = { from: () => ({ select: () => ({ eq: (key, value) => ({ maybeSingle: async () => {
+   assert.equal(key, 'application_code'); assert.equal(value, row.application_code);
+   return {data: row, error: null};
+ } }) }) }) };
+ assert.equal(await matchingContext.findApplicationByReferences(client, [row.application_code]), row);
+});
+test('application lookup errors are retried instead of acknowledged', async () => {
+ const client = { from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({error: {message:'database unavailable'}}) }) }) }) };
+ await assert.rejects(matchingContext.findApplicationByReferences(client, ['F9-A-123456']), /database unavailable/);
+});

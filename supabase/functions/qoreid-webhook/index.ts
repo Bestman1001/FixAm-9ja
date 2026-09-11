@@ -182,6 +182,14 @@ function parseWebhookBody(rawBody: string) {
 
 async function findApplicationByReferences(supabaseAdmin: SupabaseAdmin, references: string[]) {
   for (const reference of references) {
+    // Collection webhooks return the session subjectRef as customerReference.
+    // New sessions use the application code so separate applications never share a reference.
+    if (/^F9-A-\d+$/.test(reference)) {
+      const byApplication = await supabaseAdmin.from("artisan_applications")
+        .select("*").eq("application_code", reference).maybeSingle();
+      if (byApplication.error) throw new Error(byApplication.error.message);
+      if (byApplication.data) return byApplication.data;
+    }
     const byReference = await supabaseAdmin
       .from("artisan_applications")
       .select("*")

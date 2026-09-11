@@ -259,7 +259,7 @@ async function createQoreIdCollectionSession(
     type: "collection",
     productCode,
     reference: sessionReference,
-    subjectRef: await pseudonymousSubjectRef(input.applicantUserId),
+    subjectRef: sessionReference,
     ttlSeconds: 600,
     maxAttempts: 3,
   };
