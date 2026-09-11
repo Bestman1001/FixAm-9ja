@@ -313,22 +313,21 @@ function extractReferenceCandidates(payload: unknown): string[] {
 
 function normalizeQoreIdStatus(payload: unknown) {
   const text = JSON.stringify(payload).toLowerCase();
-  const statusValues = extractStatusCandidates(payload).map((value) => value.toLowerCase());
+  const statusValues = extractStatusCandidates(payload).map((value) => value.toLowerCase().trim().replace(/[\s-]+/g, "_"));
 
   if (
-    statusValues.some((value) => ["verified", "success", "successful", "passed", "approved", "completed", "complete"].includes(value)) ||
-    text.includes('"verified":true') ||
-    text.includes('"success":true')
-  ) {
-    return "verified";
-  }
-
-  if (
-    statusValues.some((value) => ["failed", "failure", "rejected", "declined", "not_found", "unsuccessful"].includes(value)) ||
+    statusValues.some((value) => ["failed", "failure", "rejected", "declined", "not_found", "unsuccessful", "not_live", "not_verified", "mismatch", "mismatched"].includes(value)) ||
     text.includes('"verified":false') ||
     text.includes('"success":false')
   ) {
     return "failed";
+  }
+
+  // Completion and transport success do not establish a positive identity verdict.
+  // A negative component takes precedence over any positive component above.
+  if (statusValues.some((value) => ["verified", "passed", "approved"].includes(value)) ||
+      text.includes('"verified":true')) {
+    return "verified";
   }
 
   return "pending";
