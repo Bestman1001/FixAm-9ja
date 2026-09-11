@@ -17,3 +17,10 @@ test("ordinary homepage navigation does not redirect", () => {
     hash: "#marketplace", replace: () => assert.fail("unexpected redirect"),
   } } });
 });
+test("expired signup links and successful signup never enter password recovery", () => {
+  for (const hash of ["#error=access_denied&error_code=otp_expired", "#type=signup&access_token=test-only"]) {
+    vm.runInNewContext(source, { URLSearchParams, window: { location: {
+      hash, replace: () => assert.fail("signup incorrectly routed to recovery"),
+    } } });
+  }
+});
