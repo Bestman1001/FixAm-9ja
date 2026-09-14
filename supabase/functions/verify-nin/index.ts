@@ -28,6 +28,9 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json();
+    if (body.action === "replay_collection_webhook") {
+      return await replayCollectionWebhook(req, body);
+    }
     const applicationCode = String(body.application_code || "").trim();
     const applicantEmail = String(body.applicant_email || "").trim().toLowerCase();
     const fullName = String(body.full_name || "").trim();
@@ -143,6 +146,45 @@ Deno.serve(async (req) => {
     return json({ error: error instanceof Error ? error.message : "Verification failed." }, 500);
   }
 });
+
+async function replayCollectionWebhook(req: Request, body: Record<string, unknown>) {
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const authorization = req.headers.get("Authorization") || "";
+  let serviceAuthorized = !!serviceKey && authorization === `Bearer ${serviceKey}`;
+  // Accept another valid service-role key after key rotation, verified by Auth.
+  // Merely decoding a JWT role is never sufficient authorization.
+  if (!serviceAuthorized && authorization.startsWith("Bearer ")) {
+    const projectUrl = Deno.env.get("SUPABASE_URL");
+    if (projectUrl) {
+      const adminCheck = await fetch(`${projectUrl}/auth/v1/admin/users?page=1&per_page=1`, {
+        headers: { Authorization: authorization, apikey: authorization.slice(7) },
+      });
+      serviceAuthorized = adminCheck.ok;
+      await adminCheck.body?.cancel();
+    }
+  }
+  if (!serviceAuthorized) {
+    return json({ error: "Service-role authorization required." }, 403);
+  }
+  const requestId = String(body.request_id || "");
+  if (!/^\d{1,20}$/.test(requestId)) return json({ error: "A QoreID request ID is required." }, 400);
+  const clientId = Deno.env.get("QOREID_CLIENT_ID");
+  const secret = Deno.env.get("QOREID_CLIENT_SECRET");
+  if (!clientId || !secret) return json({ error: "QoreID credentials unavailable." }, 503);
+  const tokenResponse = await fetch("https://api.qoreid.com/token", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ clientId, secret }),
+  });
+  if (!tokenResponse.ok) return json({ error: "QoreID authentication failed.", provider_status: tokenResponse.status }, 502);
+  const tokenBody = await tokenResponse.json();
+  const token = tokenBody.accessToken || tokenBody.access_token;
+  if (typeof token !== "string" || !token) return json({ error: "QoreID token missing." }, 502);
+  // Replay only: this endpoint does not initiate or charge for a new verification.
+  const replay = await fetch(`https://api.qoreid.com/v1/webhooks/collection/realtime?requestId=${requestId}`, {
+    method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+  });
+  return json({ ok: replay.ok, request_id: requestId, provider_status: replay.status }, replay.ok ? 200 : 502);
+}
 
 async function verifyWithProvider(input: {
   applicationCode: string;
