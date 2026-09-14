@@ -7,7 +7,7 @@
     <title>Subscription & Payments | FixAm 9ja</title>
     <link rel="icon" href="fixam-logo.jpg" />
     <link rel="stylesheet" href="styles.css?v=20260823-mailboxes" />
-    <link rel="stylesheet" href="billing.css?v=20260910" />
+    <link rel="stylesheet" href="billing.css?v=20260914-payments" />
   </head>
   <body>
     <header class="topbar">
@@ -22,8 +22,8 @@
     <main class="content-page billing-page">
       <section class="document-hero">
         <p class="eyebrow">Artisan membership</p>
-        <h1>Your subscription, on your terms.</h1>
-        <p>Pay securely with Paystack. Your membership renews automatically until you cancel.</p>
+        <h1>Your membership, your way.</h1>
+        <p>Pay securely with the familiar Nigerian payment method that works for you.</p>
         <p id="billingNote" class="form-note" role="status" aria-live="polite">Loading your subscription…</p>
         <a id="billingSignIn" class="primary-action" href="account.html" hidden>Sign in to continue</a>
       </section>
@@ -42,16 +42,32 @@
           <h2>Choose your membership</h2>
           <label for="billingPlan">Billing period</label>
           <select id="billingPlan" name="plan" required>
-            <option value="monthly">Monthly — ₦2,500 every month</option>
-            <option value="biannual">6 months — ₦12,000 every six months</option>
-            <option value="annual">Yearly — ₦24,000 every year</option>
+            <option value="monthly">1 month — ₦2,500</option>
+            <option value="biannual">6 months — ₦12,000</option>
+            <option value="annual">1 year — ₦24,000</option>
           </select>
+          <fieldset class="payment-choice">
+            <legend>How would you like to pay?</legend>
+            <label class="payment-option">
+              <input type="radio" name="paymentMode" value="once" checked />
+              <span><strong>Pay once</strong><small>Recommended. Choose OPay or another bank app, transfer, USSD, PayAttitude, or card. Renew only when you decide.</small></span>
+            </label>
+            <label class="payment-option">
+              <input type="radio" name="paymentMode" value="automatic" />
+              <span><strong>Automatic renewal</strong><small>Use a supported card. Paystack charges the same amount again when this term ends. You can cancel anytime.</small></span>
+            </label>
+          </fieldset>
+          <aside class="payment-methods" aria-label="Available one-time payment methods">
+            <strong>Pay once with:</strong>
+            <span>Mobile wallets &amp; bank apps</span><span>Bank transfer</span><span>USSD</span><span>PayAttitude</span><span>Card</span>
+            <small>For OPay, PalmPay, Pocket, or Carbon, choose <b>Bank</b> on Paystack and select your provider.</small>
+          </aside>
           <label class="billing-consent"><input id="billingConsent" type="checkbox" required />
-            <span id="billingConsentText">I agree to automatic renewal at the selected price until I cancel.</span>
+            <span id="billingConsentText">I confirm this one-time membership payment.</span>
           </label>
-          <p>Cancel anytime to stop the next renewal. Your paid access lasts until the end of the current term. Identity verification and marketplace approval are still required.</p>
+          <p id="renewalHelp">This payment will not renew automatically. Return here to renew when your membership ends. Identity verification and marketplace approval are still required.</p>
           <p>By continuing, you agree to the <a href="policies.html">subscription and refund policies</a>.</p>
-          <button id="checkoutButton" class="primary-action" type="submit">Continue to Paystack</button>
+          <button id="checkoutButton" class="primary-action" type="submit">Choose payment method</button>
         </form>
         <section class="document-card" aria-labelledby="paymentHistoryTitle">
           <h2 id="paymentHistoryTitle">Payment history</h2>
@@ -69,6 +85,6 @@
     </dialog>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase-config.js?v=20260814"></script>
-    <script src="billing.js?v=20260910"></script>
+    <script src="billing.js?v=20260914-payments"></script>
   </body>
 </html>

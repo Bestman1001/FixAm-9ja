@@ -1,6 +1,6 @@
-# Paystack recurring subscriptions
+# Paystack membership payments
 
-The integration uses Supabase Edge Functions and Paystack hosted card checkout. The website never receives the secret key or reusable card authorizations. Customers still discover artisans for free. Each artisan account has one current paid membership, linked to its verified application/profile.
+The integration uses Supabase Edge Functions and Paystack hosted checkout. Artisans can pay once using Nigerian bank apps and wallets through Pay with Bank, bank transfer, USSD, PayAttitude, or card. They can instead choose automatic renewal with a supported card. The website never receives the secret key or reusable card authorizations. Customers still discover artisans for free. Each artisan account has one current paid membership, linked to its verified application/profile.
 
 ## Production configuration — 10 September 2026
 
@@ -9,9 +9,9 @@ Configured in project `bqzbadvqozpmdkmdenly` through the authenticated dashboard
 - Live plans: monthly `PLN_xjk3dquddg7uiaa`, six months `PLN_zml7dsxbj7xifct`, yearly `PLN_cxhrxf3t7uvg3a3`. Unlimited billing cycles; no customer subscriptions were created during setup.
 - Paystack live secret and plan codes saved as Supabase secrets; `PAYSTACK_MODE=live` and `APP_ORIGIN=https://www.fixam9ja.com`.
 - Paystack live callback and webhook URLs saved as documented below.
-- Billing migration applied; billing RLS enabled and browser execution of the payment activation RPC denied. Initial live ledger check: zero subscriptions and zero payments.
+- Billing migration applied; billing RLS enabled and browser execution of the payment activation RPC denied. Initial live ledger check: zero subscriptions and zero payments. Apply the current migration again after the payment-choice release to add `payment_mode` safely.
 - Deployed `paystack-billing`, `paystack-webhook`, `delete-account`, `admin-manage-users`, and updated `qoreid-webhook`. Gateway legacy JWT verification disabled; authentication/signature checks run inside each handler.
-- Live unsigned/unauthenticated POST checks returned HTTP 401 from all five handlers. All 14 local automated tests and production static checks passed.
+- Live unsigned/unauthenticated POST checks returned HTTP 401 from all five handlers. The current local suite covers one-time and automatic checkout, payment verification, webhook delivery, cancellation, expiry, and account deletion.
 
 A real customer checkout, provider renewal delivery, and live cancellation still require end-to-end validation. No live payment was made by this setup process.
 
@@ -25,7 +25,7 @@ In the Paystack dashboard, select **Live mode → Subscriptions → Plans** and 
 | FixAm 9ja 6 Months | 12,000 | Biannually / every six months | `PAYSTACK_PLAN_BIANNUAL` |
 | FixAm 9ja Yearly | 24,000 | Annually | `PAYSTACK_PLAN_ANNUAL` |
 
-Paystack's API uses kobo: 250000, 1200000 and 2400000 respectively. Checkout fetches each plan from Paystack and checks its price, interval, currency and environment before using it.
+Paystack's API uses kobo: 250000, 1200000 and 2400000 respectively. Checkout fetches each plan from Paystack and checks its price, interval, currency and environment before using it. Automatic renewal sends the selected plan to Paystack. One-time checkout keeps the same server-controlled price and term but does not send a recurring plan.
 
 ## 2. Set Supabase Function secrets
 
@@ -80,7 +80,8 @@ Run `pnpm install --frozen-lockfile`, `pnpm test`, and `./scripts/verify-product
 
 In staging with Paystack test credentials, verify:
 
-- A verified artisan can choose each plan, explicitly agree to recurring billing, and reach hosted checkout at the correct amount.
+- A verified artisan can choose each term and either a one-time payment or automatic renewal, explicitly confirm the choice, and reach hosted checkout at the correct amount.
+- One-time checkout does not contain a Paystack plan and offers Bank (including eligible bank apps and wallets), bank transfer, USSD, PayAttitude, and card. Automatic renewal contains the correct plan and is restricted to a supported card.
 - Successful payment activates membership once, including when the browser is closed before the callback or the webhook is replayed.
 - `subscription.create` and `invoice.update` can arrive in either order; a paid renewal records a unique reference and updates the paid-through date.
 - Unsuccessful payment, wrong amount/currency/customer/plan, invalid signatures, and test-mode transactions do not activate live access.
@@ -98,7 +99,7 @@ Finally, the account owner should complete a real live checkout using their own 
 - `billing_payments.reference` prevents replay. A database transaction locks the membership and updates the ledger, application, artisan and operations request atomically. Paid-through dates are monotonic for out-of-order deliveries.
 - Cancellation changes renewal state, not the paid-through date. Public access checks the expiry timestamp directly, without depending on a scheduled job. A new plan can start when the previous paid term has ended and renewal is stopped.
 - Inspect Edge Function failures and unsuccessful webhook deliveries in Paystack. Failed processing returns a retryable response. Paystack's retries are finite, so investigate persistent failures and replay missed events after resolving the cause.
-- An unfinished checkout is reused to prevent duplicate subscriptions. A changed plan or an uncertain initialization timeout may require payment support. Never close or replace such a record without checking Paystack for a successful charge and any recurring subscription first.
+- An unfinished checkout is reused to prevent duplicate payments. When the artisan changes the term or payment mode, the service verifies the old transaction and replaces it only after Paystack reports a definitive failed, abandoned, or reversed result. A still-processing attempt must be resolved before another checkout starts.
 - Process refund requests and disputes in the Paystack dashboard under the stated policy; this integration does not automatically issue refunds or reverse entitlements on refund/chargeback events. Record any manual entitlement adjustment separately and review the paid-through date in `billing_subscriptions`.
 - Keep historical payment references and amounts for accounting; the account-deletion trigger removes the stored billing email and detaches the Auth user. Retention duration remains an operator policy.
 

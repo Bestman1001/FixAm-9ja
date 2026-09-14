@@ -20,6 +20,10 @@ create table if not exists public.billing_subscriptions (
   closed_at timestamptz,
   created_at timestamptz not null default now()
 );
+alter table public.billing_subscriptions add column if not exists payment_mode text not null default 'automatic';
+alter table public.billing_subscriptions drop constraint if exists billing_subscriptions_payment_mode_check;
+alter table public.billing_subscriptions add constraint billing_subscriptions_payment_mode_check
+  check (payment_mode in ('once', 'automatic'));
 create unique index if not exists billing_one_open_per_user
   on public.billing_subscriptions(user_id) where closed_at is null;
 create table if not exists public.billing_payments (
@@ -78,6 +82,7 @@ begin
   expiry := greatest(b.paid_through, p_paid_at + case b.plan
     when 'annual' then interval '1 year' when 'biannual' then interval '6 months' else interval '1 month' end);
   update public.billing_subscriptions set paid_through = expiry,
+    provider_status = case when payment_mode = 'once' then 'paid' else provider_status end,
     last_paid_at = greatest(last_paid_at, p_paid_at) where id = b.id;
   select application_code into application_code_value from public.artisan_applications where id = b.application_id;
   insert into public.subscription_requests(request_code, application_code, artisan_id, applicant_user_id,
@@ -150,6 +155,7 @@ returns uuid language plpgsql security definer set search_path = public as $$
 begin
   if auth.uid() is null then raise exception 'Authentication required'; end if;
   if exists (select 1 from public.billing_subscriptions where user_id = auth.uid() and closed_at is null
+    and payment_mode = 'automatic'
     and (subscription_code is null or provider_status not in ('non-renewing', 'cancelled', 'complete', 'completed'))) then
     raise exception 'Cancel recurring billing before deleting this account';
   end if;
@@ -163,6 +169,7 @@ create or replace function public.fixam_close_deleted_user_billing()
 returns trigger language plpgsql security definer set search_path = public as $$
 begin
   if exists (select 1 from public.billing_subscriptions where user_id = old.id and closed_at is null
+    and payment_mode = 'automatic'
     and (subscription_code is null or provider_status not in ('non-renewing', 'cancelled', 'complete', 'completed'))) then
     raise exception 'Cancel recurring billing before deleting this account';
   end if;

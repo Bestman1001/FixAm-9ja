@@ -21,12 +21,13 @@ export function safePaystackUrl(value: unknown, kind: 'checkout' | 'manage') {
 
 export function validateTransaction(data: any, billing: any, reference: string, mode: string) {
   const planCode = typeof data.plan === 'string' ? data.plan : data.plan?.plan_code || data.plan_object?.plan_code;
+  const planMatches = billing.payment_mode === 'once' ? !planCode : planCode === billing.plan_code;
   if (data.status !== 'success' || data.reference !== reference || data.domain !== mode ||
       data.currency !== 'NGN' || data.amount !== billing.amount_kobo ||
       String(data.customer?.email || '').toLowerCase() !== billing.email.toLowerCase() ||
-      planCode !== billing.plan_code || !Number.isFinite(Date.parse(data.paid_at)) ||
+      !planMatches || !Number.isFinite(Date.parse(data.paid_at)) ||
       (billing.customer_code && data.customer?.customer_code !== billing.customer_code)) {
-    throw new Error('Payment details do not match this subscription.');
+    throw new Error('Payment details do not match this membership.');
   }
 }
 

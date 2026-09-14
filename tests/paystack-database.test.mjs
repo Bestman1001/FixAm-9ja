@@ -76,4 +76,13 @@ test('billing migration, permissions, payment idempotency and paid-access lifecy
   const deleted = (await db.query('select email,user_id,closed_at from billing_subscriptions where id=$1', [billing])).rows[0];
   assert.equal(deleted.email, 'deleted'); assert.equal(deleted.user_id, null); assert.ok(deleted.closed_at);
   await assert.rejects(apply('F9-deleted'), /Billing account unavailable/);
+
+  const onceUid = '00000000-0000-4000-8000-000000000002';
+  await db.query(`insert into auth.users(id,email) values ($1,'once@example.com')`, [onceUid]);
+  await db.query(`insert into billing_subscriptions(user_id,email,plan,payment_mode,amount_kobo,plan_code,reference)
+    values ($1,'once@example.com','monthly','once',250000,'PLN_month','F9-once')`, [onceUid]);
+  await db.exec(`set role authenticated; set request.jwt.claim.role='authenticated'; set request.jwt.claim.sub='${onceUid}'`);
+  await assert.doesNotReject(db.query('select fixam_prepare_account_deletion()'));
+  await db.exec('reset role; reset request.jwt.claim.role; reset request.jwt.claim.sub');
+  await assert.doesNotReject(db.query('delete from auth.users where id=$1', [onceUid]));
 });

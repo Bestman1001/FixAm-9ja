@@ -28,7 +28,8 @@ Deno.serve(async (request) => {
         const email = String(snapshot.customer?.email || '').toLowerCase();
         if (email && planCode) {
           const { data: candidates } = checked(await db.from('billing_subscriptions').select('*')
-            .eq('email', email).eq('plan_code', planCode).is('subscription_code', null).is('closed_at', null));
+            .eq('email', email).eq('plan_code', planCode).eq('payment_mode', 'automatic')
+            .is('subscription_code', null).is('closed_at', null));
           if (candidates?.length === 1) {
             // An old subscription event must not attach to a newly started checkout.
             const candidate = candidates[0];

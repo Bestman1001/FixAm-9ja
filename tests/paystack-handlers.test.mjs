@@ -89,28 +89,51 @@ async function fixture() {
     return webhookHandler(new Request('https://fixture.test', { method: 'POST', body: raw,
       headers: { 'x-paystack-signature': signature ? createHmac('sha512', env.PAYSTACK_SECRET_KEY).update(raw).digest('hex') : 'bad' } }));
   };
-  state.checkout = () => state.request({ action: 'checkout', plan: 'monthly', consent: true });
+  state.checkout = () => state.request({ action: 'checkout', plan: 'monthly', payment_mode: 'automatic', consent: true });
   return state;
 }
 
-test('checkout requires authentication, explicit recurring consent and verified artisan ownership', async () => {
+test('checkout requires authentication, payment mode, explicit consent and verified artisan ownership', async () => {
   const f = await fixture();
   assert.equal((await f.request({ action: 'checkout' }, 'invalid')).status, 401);
-  assert.equal((await f.request({ action: 'checkout', plan: 'monthly' })).status, 400);
-  assert.equal((await f.request({ action: 'checkout', plan: 'monthly', consent: true, application_code: 'OTHER' })).status, 403);
+  assert.equal((await f.request({ action: 'checkout', plan: 'monthly', consent: true })).status, 400);
+  assert.equal((await f.request({ action: 'checkout', plan: 'monthly', payment_mode: 'once' })).status, 400);
+  assert.equal((await f.request({ action: 'checkout', plan: 'monthly', payment_mode: 'once', consent: true, application_code: 'OTHER' })).status, 403);
   f.tables.artisan_applications[0].identity_verification_status = 'pending';
   assert.equal((await f.checkout()).status, 409);
   assert.equal(f.calls.length, 0);
 });
 test('checkout uses server prices, correct recurring plan, trusted callback and one reusable checkout', async () => {
   const f = await fixture();
-  assert.equal((await f.request({ action: 'checkout', plan: 'monthly', amount: 1, consent: true })).status, 200);
+  assert.equal((await f.request({ action: 'checkout', plan: 'monthly', payment_mode: 'automatic', amount: 1, consent: true })).status, 200);
   const call = f.calls.find((item) => item.path === '/transaction/initialize');
   assert.equal(call.body.amount, '250000'); assert.equal(call.body.plan, 'PLN_monthly');
+  assert.deepEqual(call.body.channels, ['card']);
   assert.equal(call.body.callback_url, 'https://www.fixam9ja.com/billing.html');
   assert.equal((await f.checkout()).status, 200);
   assert.equal(f.calls.filter((item) => item.path === '/transaction/initialize').length, 1);
   assert.equal(f.tables.billing_subscriptions.length, 1);
+});
+test('one-time checkout offers Nigerian bank apps, transfer, USSD, PayAttitude and card without creating a subscription', async () => {
+  const f = await fixture();
+  const response = await f.request({ action: 'checkout', plan: 'monthly', payment_mode: 'once', consent: true });
+  assert.equal(response.status, 200);
+  const call = f.calls.find((item) => item.path === '/transaction/initialize');
+  assert.equal(call.body.plan, undefined);
+  assert.deepEqual(call.body.channels, ['bank', 'bank_transfer', 'ussd', 'payattitude', 'card']);
+  assert.equal(f.tables.billing_subscriptions[0].payment_mode, 'once');
+  f.transactionPatch.plan = null;
+  assert.equal((await f.request({ action: 'verify', reference: f.tables.billing_subscriptions[0].reference })).status, 200);
+  assert.equal(f.tables.billing_subscriptions[0].provider_status, 'paid');
+});
+test('a definitively failed recurring checkout can be replaced with a one-time checkout', async () => {
+  const f = await fixture(); await f.checkout();
+  f.transactionPatch.status = 'failed';
+  const response = await f.request({ action: 'checkout', plan: 'monthly', payment_mode: 'once', consent: true });
+  assert.equal(response.status, 200);
+  assert.ok(f.tables.billing_subscriptions[0].closed_at);
+  assert.equal(f.tables.billing_subscriptions[1].payment_mode, 'once');
+  assert.equal(f.calls.filter((item) => item.path === '/transaction/initialize').length, 2);
 });
 test('browser verification rejects a foreign reference and mismatched payment without activation', async () => {
   const f = await fixture(); await f.checkout();

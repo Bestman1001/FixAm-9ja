@@ -49,7 +49,10 @@ export async function applyPayment(db: Database, billing: any, reference: string
   const data = await paystack(`/transaction/verify/${encodeURIComponent(reference)}`);
   if (data.status !== 'success') return { status: data.status || 'pending' };
   validateTransaction(data, billing, reference, configuration().mode);
-  checked(await db.from('billing_subscriptions').update({ customer_code: data.customer.customer_code })
+  checked(await db.from('billing_subscriptions').update({
+    customer_code: data.customer.customer_code,
+    ...(billing.payment_mode === 'once' ? { provider_status: 'paid' } : {}),
+  })
     .eq('id', billing.id));
   const { data: paidThrough } = checked(await db.rpc('fixam_apply_paystack_payment', {
     p_subscription_id: billing.id, p_reference: reference, p_amount: data.amount, p_paid_at: data.paid_at,
@@ -75,6 +78,7 @@ export async function syncSubscription(db: Database, billing: any, code = billin
 export async function cancelUserBilling(db: Database, userId: string) {
   const { data: rows } = checked(await db.from('billing_subscriptions').select('*').eq('user_id', userId).is('closed_at', null));
   for (const row of rows || []) {
+    if (row.payment_mode === 'once') continue;
     // A still-open checkout could create a future subscription after account deletion.
     if (!row.subscription_code) throw new Error('Resolve the pending payment with payments@fixam9ja.com before deleting this account.');
     const subscription = await syncSubscription(db, row);

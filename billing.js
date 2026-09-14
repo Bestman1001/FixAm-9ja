@@ -40,19 +40,23 @@
     }
     location.assign(url.href);
   }
+  const paymentMode = () => document.querySelector('input[name="paymentMode"]:checked').value;
   async function refresh() {
     const result = await api({ action: 'status' });
     subscription = result.subscription;
     $('billingPanel').hidden = false;
     $('billingSummary').textContent = subscription
-      ? `${subscription.plan === 'biannual' ? '6 months' : subscription.plan === 'annual' ? 'Yearly' : 'Monthly'} membership · ${subscription.status.replaceAll('_', ' ')}. ${subscription.paid_through ? `${subscription.active ? 'Paid access until' : 'Paid access ended'} ${date(subscription.paid_through)}.` : 'Payment has not been confirmed yet.'}`
+      ? `${subscription.plan === 'biannual' ? '6 months' : subscription.plan === 'annual' ? 'Yearly' : 'Monthly'} membership · ${subscription.payment_mode === 'once' ? 'one-time payment' : 'automatic renewal'} · ${subscription.status.replaceAll('_', ' ')}. ${subscription.paid_through ? `${subscription.active ? 'Paid access until' : 'Paid access ended'} ${date(subscription.paid_through)}.` : 'Payment has not been confirmed yet.'}`
       : 'You do not have a paid subscription yet.';
     $('manageBilling').hidden = !subscription?.can_manage;
     $('cancelBilling').hidden = !subscription?.can_manage || ['non-renewing', 'cancelled', 'complete', 'completed'].includes(subscription.status);
     $('verifyPayment').hidden = !subscription || Boolean(subscription.paid_through);
     $('billingForm').hidden = Boolean(subscription && (subscription.active || subscription.can_manage && !['non-renewing', 'cancelled', 'complete', 'completed'].includes(subscription.status)));
-    if (subscription && !subscription.can_manage) $('billingPlan').value = subscription.plan;
-    $('billingPlan').disabled = Boolean(subscription && !subscription.can_manage);
+    if (subscription && !subscription.paid_through) {
+      $('billingPlan').value = subscription.plan;
+      const selectedMode = document.querySelector(`input[name="paymentMode"][value="${subscription.payment_mode}"]`);
+      if (selectedMode) selectedMode.checked = true;
+    }
     $('paymentHistory').replaceChildren();
     for (const payment of result.payments) {
       const item = document.createElement('article');
@@ -68,7 +72,14 @@
   }
   function updateConsent() {
     const label = $('billingPlan').selectedOptions[0].textContent;
-    $('billingConsentText').textContent = `I agree to ${label.toLowerCase()} and automatic renewal until I cancel.`;
+    const automatic = paymentMode() === 'automatic';
+    $('billingConsentText').textContent = automatic
+      ? `I agree to ${label.toLowerCase()} and automatic renewal until I cancel.`
+      : `I confirm a one-time payment for ${label.toLowerCase()}. It will not renew automatically.`;
+    $('renewalHelp').textContent = automatic
+      ? 'Cancel anytime to stop the next renewal. Your paid access lasts until the end of the current term. Identity verification and marketplace approval are still required.'
+      : 'This payment will not renew automatically. Return here to renew when your membership ends. Identity verification and marketplace approval are still required.';
+    $('checkoutButton').textContent = automatic ? 'Start automatic membership' : 'Choose payment method';
   }
   async function verify(reference) {
     note('Checking your payment securely…');
@@ -82,12 +93,15 @@
     } else note(`Payment is ${result.status}. If you were charged, use “Check payment” again shortly; do not pay again.`, true);
   }
   $('billingPlan').addEventListener('change', () => { $('billingConsent').checked = false; updateConsent(); });
+  document.querySelectorAll('input[name="paymentMode"]').forEach((input) => input.addEventListener('change', () => {
+    $('billingConsent').checked = false; updateConsent();
+  }));
   $('billingForm').addEventListener('submit', (event) => {
     event.preventDefault();
     run(async () => {
       note('Preparing secure Paystack checkout…');
       const data = await api({ action: 'checkout', plan: $('billingPlan').value,
-        application_code: params.get('application'), consent: $('billingConsent').checked });
+        payment_mode: paymentMode(), application_code: params.get('application'), consent: $('billingConsent').checked });
       redirect(data.url);
     });
   });

@@ -18,11 +18,13 @@ test('webhook signatures verify exact raw bytes', async () => {
   assert.equal(await validSignature(new TextEncoder().encode('{}'), signature, 'sk_test_example'), false);
   assert.equal(await validSignature(raw, '', 'sk_test_example'), false);
 });
-test('payment verification rejects altered identity, price, currency, plan, mode and reference', () => {
-  const billing = { email: 'artisan@example.com', plan_code: 'PLN_monthly', amount_kobo: 250000, customer_code: 'CUS_1' };
+test('payment verification enforces recurring plans and plan-free one-time payments', () => {
+  const billing = { email: 'artisan@example.com', plan_code: 'PLN_monthly', payment_mode: 'automatic', amount_kobo: 250000, customer_code: 'CUS_1' };
   const valid = { status: 'success', reference: 'F9-1', domain: 'live', amount: 250000, currency: 'NGN',
     customer: { email: 'ARTISAN@example.com', customer_code: 'CUS_1' }, plan: { plan_code: 'PLN_monthly' }, paid_at: '2026-09-10T09:00:00Z' };
   assert.doesNotThrow(() => validateTransaction(valid, billing, 'F9-1', 'live'));
+  assert.doesNotThrow(() => validateTransaction({ ...valid, plan: null }, { ...billing, payment_mode: 'once' }, 'F9-1', 'live'));
+  assert.throws(() => validateTransaction(valid, { ...billing, payment_mode: 'once' }, 'F9-1', 'live'));
   for (const change of [{ amount: 2500 }, { currency: 'USD' }, { status: 'failed' }, { domain: 'test' },
     { reference: 'F9-other' }, { plan: null }, { paid_at: 'invalid' },
     { customer: { email: 'other@example.com', customer_code: 'CUS_1' } },
