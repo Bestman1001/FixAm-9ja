@@ -21,7 +21,7 @@ Production must not set `IDENTITY_PROVIDER_MODE=mock`, `NIN_PROVIDER_MODE=mock`,
 - `support@fixam9ja.com`: account access, technical support and safety reports.
 - `customers@fixam9ja.com`: customer quotes, jobs, reviews and disputes.
 - `artisans@fixam9ja.com`: artisan applications, profiles, onboarding and leads.
-- `verification@fixam9ja.com`: NIN/liveness verification support.
+- `verification@fixam9ja.com`: NIN face-match verification support.
 - `payments@fixam9ja.com`: subscriptions, payment confirmation, cancellation and refunds.
 - `privacy@fixam9ja.com`: privacy rights, retention and account deletion.
 - `admin@fixam9ja.com`: internal administration only; do not publish as a support address.
@@ -36,7 +36,7 @@ Verify SPF, DKIM and DMARC for the authentication sending domain before sending 
 2. Apply `supabase/schema.sql` to a fresh project when provisioning.
 3. Apply `supabase/admin-automation.sql`.
 4. Apply `supabase/app-readiness.sql`.
-5. Apply `supabase/qoreid-collection-readiness.sql` after `app-readiness.sql` so account-owned applications can use QoreID SDK liveness capture without a duplicate selfie upload.
+5. Apply `supabase/qoreid-collection-readiness.sql`, then `supabase/nin-face-match-profile-readiness.sql`, after `app-readiness.sql` so account-owned applications use QoreID NIN Face Match and require a public profile photograph before publication.
 6. Apply `supabase/admin-user-counts.sql` to enable admin access to user totals.
 7. Deploy `verify-nin`, `qoreid-webhook`, `delete-account` and `admin-manage-users` Edge Functions. Set `APP_ORIGIN=https://www.fixam9ja.com` for production and the staging origin in staging.
 8. Configure allowed authentication redirect URLs for production and staging.

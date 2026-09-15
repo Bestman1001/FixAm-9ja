@@ -77,7 +77,7 @@ Deno.serve(async (req) => {
       provider: "qoreid",
       provider_reference: reference,
       status,
-      message: providerMessage || `QoreID Collection webhook marked verification as ${status}.`,
+      message: providerMessage || `QoreID NIN face-match webhook marked verification as ${status}.`,
       response_summary: summarizeWebhook(body),
     });
 
@@ -127,7 +127,7 @@ Deno.serve(async (req) => {
       public_listing: ["active", "founding", "free_trial"].includes(artisan?.subscription_status || ""),
       message:
         status === "verified"
-          ? "Artisan identity verified. Marketplace visibility requires an eligible membership."
+          ? "Artisan NIN face match verified. Marketplace visibility requires a public profile photograph and eligible membership."
           : `Artisan identity verification is ${status}.`,
     });
   } catch (error) {
@@ -233,7 +233,7 @@ async function upsertVerifiedArtisan(
   const launchAccess = ["active", "founding", "free_trial"].includes(application.subscription_status)
     ? application.subscription_status : "pending";
   const checks = [
-    "QoreID liveness verified",
+    "QoreID NIN face matched",
     "NIN verified",
     launchAccess === "pending" ? "Subscription required" : "Membership access",
   ];
@@ -321,6 +321,15 @@ function extractReferenceCandidates(payload: unknown): string[] {
 
 function normalizeQoreIdStatus(payload: unknown) {
   const source = payload && typeof payload === "object" ? payload as Record<string, any> : {};
+  const faceResults = [
+    source.face_verification,
+    source.faceVerification,
+    source.summary?.face_verification_check,
+    source.summary?.faceVerificationCheck,
+    source.data?.face_verification,
+    source.data?.summary?.face_verification_check,
+  ].filter((value) => value && typeof value === "object");
+  if (faceResults.some((value) => value.match === false || value.verified === false)) return "failed";
   // QoreID's NIN Liveness payload repeats these results in liveness,
   // summary.liveness_check and metadata. isLive at the envelope level is
   // not a biometric verdict and must not be used here.
@@ -341,8 +350,10 @@ function normalizeQoreIdStatus(payload: unknown) {
 
   // Completion and transport success do not establish a positive identity verdict.
   // A negative component takes precedence over any positive component above.
+  if (faceResults.length && !faceResults.some((value) => value.match === true || value.verified === true)) return "pending";
   if (livenessResults.length && !livenessResults.some((value) => value.isLive === true && value.match === true)) return "pending";
-  if (statusValues.some((value) => ["verified", "passed", "approved"].includes(value)) ||
+  if (faceResults.some((value) => value.match === true || value.verified === true) ||
+      statusValues.some((value) => ["verified", "passed", "approved"].includes(value)) ||
       text.includes('"verified":true')) {
     return "verified";
   }

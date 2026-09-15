@@ -8,7 +8,7 @@
     <link rel="icon" href="fixam-logo.jpg" />
     <link rel="manifest" href="manifest.webmanifest" />
     <meta name="theme-color" content="#064c48" />
-    <link rel="stylesheet" href="account.css?v=20260815-app-ready" />
+    <link rel="stylesheet" href="account.css?v=20260915-onboarding" />
     <link rel="stylesheet" href="help-widget.css?v=20260815-app-ready" />
   </head>
   <body>
@@ -69,6 +69,7 @@
             <input id="email" type="email" placeholder="you@example.com" required />
           </label>
           <div class="form-actions">
+            <button class="google-action" type="button" id="googleSignInButton"><span aria-hidden="true">G</span> Continue with Google</button>
             <button class="primary-action" type="button" id="magicLinkButton">Email me a sign-in link</button>
           </div>
           <details class="password-panel">
@@ -139,6 +140,17 @@
           <section class="account-card" data-account-view="artisan">
             <h3>Artisan applications</h3>
             <div class="record-list" id="applicationList"></div>
+          </section>
+          <section class="account-card" id="profilePhotoCard" data-account-view="artisan">
+            <h3>Your public profile photograph</h3>
+            <div class="profile-photo-preview" id="profilePhotoPreview"><span>Add your photograph</span></div>
+            <p>Take a clear front-facing photograph. Customers will see it on your public artisan profile.</p>
+            <label>
+              <span>Take or choose a photograph</span>
+              <input id="profilePhoto" type="file" accept="image/*" capture="user" />
+            </label>
+            <button class="primary-action" type="button" id="profilePhotoUploadButton">Save public profile photograph</button>
+            <p class="form-note">A profile photograph is required before your verified, paid listing can appear in the marketplace.</p>
           </section>
           <section class="account-card" data-account-view="artisan">
             <h3>Artisan profile</h3>
@@ -254,7 +266,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="location-data.js?v=20260814-map"></script>
     <script src="supabase-config.js?v=20260814"></script>
-    <script src="account.js?v=20260830-account-routing"></script>
+    <script src="account.js?v=20260915-onboarding"></script>
     <script src="help-widget.js?v=20260823-mailboxes"></script>
   </body>
 </html>

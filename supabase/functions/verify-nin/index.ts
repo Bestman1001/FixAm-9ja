@@ -37,10 +37,7 @@ Deno.serve(async (req) => {
     const phone = String(body.phone || "").trim();
     const nin = String(body.nin || "").trim();
     const consent = body.consent === true;
-    const livenessConsent = body.liveness_consent === true;
-    const selfieMediaPaths = Array.isArray(body.selfie_media_paths)
-      ? body.selfie_media_paths.map((path) => String(path || "").trim()).filter(Boolean).slice(0, 2)
-      : [];
+    const faceMatchConsent = body.face_match_consent === true;
 
     if (!applicationCode || !applicantEmail || !fullName || !phone) {
       return json({ error: "Application code, email, name, and phone are required." }, 400);
@@ -54,8 +51,8 @@ Deno.serve(async (req) => {
       return json({ error: "Identity verification consent is required." }, 400);
     }
 
-    if (!livenessConsent) {
-      return json({ error: "Liveness verification consent is required." }, 400);
+    if (!faceMatchConsent) {
+      return json({ error: "NIN face-match consent is required." }, 400);
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
@@ -93,7 +90,6 @@ Deno.serve(async (req) => {
       fullName,
       phone,
       applicantEmail,
-      selfieMediaPaths,
     });
     const now = new Date().toISOString();
 
@@ -101,9 +97,9 @@ Deno.serve(async (req) => {
       nin_last4: nin.slice(-4),
       nin_consent: true,
       nin_consent_at: now,
-      liveness_consent: true,
-      liveness_consent_at: now,
-      verification_media_count: selfieMediaPaths.length,
+      face_match_consent: true,
+      face_match_consent_at: now,
+      verification_media_count: 0,
       identity_verification_status: result.status,
       identity_verification_reference: result.reference,
     };
@@ -126,7 +122,7 @@ Deno.serve(async (req) => {
       application_code: applicationCode,
       applicant_email: applicantEmail,
       nin_last4: nin.slice(-4),
-      liveness_media_count: selfieMediaPaths.length,
+      liveness_media_count: 0,
       provider: providerName(),
       provider_reference: result.reference,
       status: result.status,
@@ -193,7 +189,6 @@ async function verifyWithProvider(input: {
   fullName: string;
   phone: string;
   applicantEmail: string;
-  selfieMediaPaths: string[];
 }): Promise<VerificationResult> {
   const mode = Deno.env.get("NIN_PROVIDER_MODE") || Deno.env.get("IDENTITY_PROVIDER_MODE") || "pending";
   const reference = `identity-${crypto.randomUUID()}`;
@@ -205,7 +200,7 @@ async function verifyWithProvider(input: {
     return {
       status: "verified",
       reference,
-      message: "Mock NIN + selfie/liveness verification passed. Replace mock mode before production launch.",
+      message: "Mock NIN face-match verification passed. Replace mock mode before production launch.",
     };
   }
 
@@ -236,8 +231,7 @@ async function verifyWithProvider(input: {
       full_name: input.fullName,
       phone: input.phone,
       email: input.applicantEmail,
-      selfie_media_paths: input.selfieMediaPaths,
-      liveness_consent: true,
+      face_match_consent: true,
       consent: true,
     }),
   });
@@ -270,13 +264,12 @@ async function createQoreIdCollectionSession(
     fullName: string;
     phone: string;
     applicantEmail: string;
-    selfieMediaPaths: string[];
   },
   fallbackReference: string,
 ): Promise<VerificationResult> {
   const clientId = Deno.env.get("QOREID_CLIENT_ID");
   const clientSecret = Deno.env.get("QOREID_CLIENT_SECRET");
-  const productCode = Deno.env.get("QOREID_PRODUCT_CODE") || "liveness_nin";
+  const productCode = Deno.env.get("QOREID_PRODUCT_CODE") || "face_verification_nin";
   const baseUrl = Deno.env.get("QOREID_BASE_URL") || "https://api.qoreid.com";
 
   if (!clientId || !clientSecret) {
@@ -287,11 +280,11 @@ async function createQoreIdCollectionSession(
     };
   }
 
-  if (productCode !== "liveness_nin" && productCode !== "face_verification_nin") {
+  if (productCode !== "face_verification_nin") {
     return {
       status: "failed",
       reference: fallbackReference,
-      message: "QoreID product code must be liveness_nin or face_verification_nin.",
+      message: "QoreID product code must be face_verification_nin.",
     };
   }
 
@@ -348,8 +341,8 @@ async function createQoreIdCollectionSession(
     verificationUrl,
     sdkSessionToken,
     message: sdkSessionToken
-      ? "QoreID NIN-liveness Collection session is ready. Start the secure identity check to continue."
-      : "QoreID NIN-liveness Collection session is ready. Open the secure verification link to continue.",
+      ? "QoreID NIN face-match session is ready. Take one clear selfie to continue."
+      : "QoreID NIN face-match session is ready. Open the secure verification link to continue.",
     providerResponse,
   };
 }

@@ -16,9 +16,12 @@ const sessionEmail = document.querySelector("#sessionEmail");
 const adminPortalLink = document.querySelector("#adminPortalLink");
 const signOutButton = document.querySelector("#signOutButton");
 const magicLinkButton = document.querySelector("#magicLinkButton");
+const googleSignInButton = document.querySelector("#googleSignInButton");
 const refreshButton = document.querySelector("#refreshButton");
 const claimProfileButton = document.querySelector("#claimProfileButton");
 const portfolioUploadButton = document.querySelector("#portfolioUploadButton");
+const profilePhotoUploadButton = document.querySelector("#profilePhotoUploadButton");
+const profilePhotoPreview = document.querySelector("#profilePhotoPreview");
 const quoteList = document.querySelector("#quoteList");
 const quoteLeadList = document.querySelector("#quoteLeadList");
 const quoteLeadBadge = document.querySelector("#quoteLeadBadge");
@@ -42,6 +45,7 @@ let currentUser = null;
 let currentProfile = null;
 let ownedArtisan = null;
 let quoteRecords = new Map();
+const googleAuthIntentKey = "fixam9ja.googleAuthIntent";
 
 if (!supabaseClient) {
   setNote(authNote, "Supabase is not configured yet. Accounts cannot be used.", "error");
@@ -95,6 +99,26 @@ authForm.addEventListener("submit", async (event) => {
 
 magicLinkButton.addEventListener("click", async () => {
   await sendEmailSignInLink();
+});
+
+googleSignInButton.addEventListener("click", async () => {
+  if (!supabaseClient) return;
+  const role = document.querySelector("#accountRole").value;
+  sessionStorage.setItem(googleAuthIntentKey, JSON.stringify({
+    role,
+    fullName: document.querySelector("#fullName").value.trim(),
+    phone: document.querySelector("#phone").value.trim(),
+  }));
+  googleSignInButton.disabled = true;
+  setNote(authNote, "Opening Google sign-in...", "");
+  const { error } = await supabaseClient.auth.signInWithOAuth({
+    provider: "google",
+    options: { redirectTo: accountRedirectUrl() },
+  });
+  if (error) {
+    googleSignInButton.disabled = false;
+    setNote(authNote, `Google sign-in could not start: ${error.message}`, "error");
+  }
 });
 
 async function sendEmailSignInLink() {
@@ -283,6 +307,53 @@ portfolioUploadButton.addEventListener("click", async () => {
   await loadDashboard();
 });
 
+profilePhotoUploadButton.addEventListener("click", async () => {
+  if (!ownedArtisan) {
+    setNote(dashboardNote, "Complete NIN face matching before adding your public profile photograph.", "error");
+    return;
+  }
+
+  const file = selectedFiles("#profilePhoto")[0];
+  if (!file) {
+    setNote(dashboardNote, "Take or choose a profile photograph first.", "error");
+    return;
+  }
+  if (!file.type.startsWith("image/") || file.size > 10 * 1024 * 1024) {
+    setNote(dashboardNote, "Choose a JPG, PNG, HEIC or other image up to 10 MB.", "error");
+    return;
+  }
+
+  profilePhotoUploadButton.disabled = true;
+  setNote(dashboardNote, "Saving your public profile photograph...", "");
+  const result = await uploadMediaFiles({
+    files: [file],
+    folder: `artisan-profiles/${ownedArtisan.id}/profile-photo`,
+    entityType: "artisan_profile",
+    entityId: String(ownedArtisan.id),
+    role: "artisan",
+  });
+  const publicUrl = result.uploads?.[0]?.publicUrl;
+  if (result.error || !publicUrl) {
+    profilePhotoUploadButton.disabled = false;
+    setNote(dashboardNote, `Profile photograph upload needs retry: ${result.error || "No public image URL was returned."}`, "error");
+    return;
+  }
+
+  const { error } = await supabaseClient
+    .from("artisans")
+    .update({ profile_image_url: publicUrl, updated_at: new Date().toISOString() })
+    .eq("id", ownedArtisan.id)
+    .eq("owner_user_id", currentUser.id);
+  profilePhotoUploadButton.disabled = false;
+  if (error) {
+    setNote(dashboardNote, `The photograph uploaded but could not be connected to your profile: ${error.message}`, "error");
+    return;
+  }
+
+  document.querySelector("#profilePhoto").value = "";
+  await loadDashboard({ message: "Public profile photograph saved.", type: "success" });
+});
+
 if (supabaseClient) {
   supabaseClient.auth.onAuthStateChange((_event, session) => {
     if (session?.user) {
@@ -377,6 +448,7 @@ async function loadDashboard(note = null) {
   ]);
 
   ownedArtisan = artisansResult.data?.[0] || null;
+  renderProfilePhoto(ownedArtisan);
   const quoteLeadsResult = ownedArtisan
     ? await supabaseClient
         .from("quote_requests")
@@ -419,11 +491,12 @@ async function loadProfile() {
   const { data } = await supabaseClient.from("user_profiles").select("*").eq("user_id", currentUser.id).maybeSingle();
   if (data) return data;
 
+  const googleIntent = readGoogleAuthIntent();
   const fallback = {
     email: currentUser.email,
-    full_name: currentUser.user_metadata?.full_name || currentUser.email?.split("@")[0] || "FixAm user",
-    phone: currentUser.user_metadata?.phone || "",
-    role: currentUser.user_metadata?.role || "customer",
+    full_name: googleIntent.fullName || currentUser.user_metadata?.full_name || currentUser.user_metadata?.name || currentUser.email?.split("@")[0] || "FixAm user",
+    phone: googleIntent.phone || currentUser.user_metadata?.phone || "",
+    role: googleIntent.role === "artisan" ? "artisan" : (currentUser.user_metadata?.role || "customer"),
   };
   await saveUserProfile({
     email: fallback.email,
@@ -431,7 +504,17 @@ async function loadProfile() {
     phone: fallback.phone,
     role: fallback.role,
   });
+  sessionStorage.removeItem(googleAuthIntentKey);
   return { user_id: currentUser.id, ...fallback };
+}
+
+function readGoogleAuthIntent() {
+  try {
+    const intent = JSON.parse(sessionStorage.getItem(googleAuthIntentKey) || "{}");
+    return intent && typeof intent === "object" ? intent : {};
+  } catch (_error) {
+    return {};
+  }
 }
 
 async function saveUserProfile({ email, fullName, phone, role }) {
@@ -768,10 +851,27 @@ function renderArtisanNextStep(applications, artisans) {
     artisanNextStep.innerHTML = `<h3>${identity === "failed" ? "Identity verification needs attention" : "Waiting for your verification result"}</h3><p>${identity === "failed" ? "Contact verification support to review your existing check." : "Your application is linked to this account. If you completed QoreID, use Refresh to check for the result. You do not need to claim a profile or repeat a paid identity check."}</p><p>Subscription checkout becomes available once FixAm confirms your identity.</p><a href="mailto:verification@fixam9ja.com">Contact verification support</a>`;
     return;
   }
+  if (!artisan) {
+    artisanNextStep.innerHTML = '<h3>Identity verified — preparing your artisan profile</h3><p>Your face match has passed. Use Refresh shortly so FixAm can finish connecting your profile before you add its public photograph.</p>';
+    return;
+  }
+  if (!safePublicImageUrl(artisan.profile_image_url)) {
+    artisanNextStep.innerHTML = '<h3>Add your public profile photograph</h3><p>Your NIN face match has passed. Take or choose the photograph customers should see before you continue to membership and payment.</p><a class="primary-action" href="#profilePhotoCard">Add profile photograph</a>';
+    return;
+  }
   const url = new URL("billing.html", window.location.href);
   if (application) url.searchParams.set("application", application.application_code);
   url.searchParams.set("plan", application?.subscription_plan || artisan?.subscription_plan || "monthly");
-  artisanNextStep.innerHTML = `<h3>Identity verified — manage your membership</h3><p>Choose a subscription and agree to automatic renewal before continuing to secure Paystack checkout. Your application is already linked to your account.</p><a class="primary-action" href="${escapeHtml(url.href)}">Continue to subscription & payments</a>`;
+  artisanNextStep.innerHTML = `<h3>Your profile is ready for membership</h3><p>Choose your subscription and preferred Paystack payment method. Your verified application and public photograph are already linked to your account.</p><a class="primary-action" href="${escapeHtml(url.href)}">Continue to subscription & payments</a>`;
+}
+
+function renderProfilePhoto(artisan) {
+  const imageUrl = safePublicImageUrl(artisan?.profile_image_url);
+  profilePhotoPreview.classList.toggle("has-photo", Boolean(imageUrl));
+  profilePhotoPreview.innerHTML = imageUrl
+    ? `<img src="${escapeHtml(imageUrl)}" alt="Your public artisan profile photograph" />`
+    : "<span>Add your photograph</span>";
+  profilePhotoUploadButton.disabled = !artisan;
 }
 
 function renderArtisanProfile(items, applications = []) {
@@ -934,6 +1034,7 @@ function setSignedOut() {
   currentUser = null;
   currentProfile = null;
   ownedArtisan = null;
+  renderProfilePhoto(null);
 }
 
 function setNote(element, message, type) {
@@ -949,9 +1050,10 @@ function selectedFiles(selector) {
 }
 
 async function uploadMediaFiles({ files, folder, entityType, entityId, role }) {
-  if (!supabaseClient || !files.length) return { count: 0 };
+  if (!supabaseClient || !files.length) return { count: 0, uploads: [] };
 
   let count = 0;
+  const uploads = [];
   for (const file of files) {
     if (!isAllowedMedia(file)) {
       return { count, error: `${file.name} is too large or not a supported image/video type.` };
@@ -985,9 +1087,10 @@ async function uploadMediaFiles({ files, folder, entityType, entityId, role }) {
 
     if (metadataError) return { count, error: metadataError.message };
     count += 1;
+    uploads.push({ publicUrl, path });
   }
 
-  return { count };
+  return { count, uploads };
 }
 
 function isAllowedMedia(file) {
@@ -1009,6 +1112,16 @@ function phoneKey(value) {
 
 function accountRedirectUrl() {
   return productionAccountUrl;
+}
+
+function safePublicImageUrl(value) {
+  if (!value) return "";
+  try {
+    const url = new URL(value, window.location.origin);
+    return url.protocol === "https:" ? url.href : "";
+  } catch (_error) {
+    return "";
+  }
 }
 
 function adminDashboardUrl() {

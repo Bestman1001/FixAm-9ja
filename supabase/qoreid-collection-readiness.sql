@@ -1,5 +1,5 @@
--- FixAm 9ja: allow QoreID Collection SDK liveness capture.
--- The SDK captures the live face, so a duplicate Supabase selfie upload is no longer required.
+-- FixAm 9ja: allow QoreID Collection SDK NIN face matching.
+-- The SDK captures the comparison selfie, so a duplicate Supabase upload is not required.
 
 begin;
 
@@ -12,7 +12,7 @@ create policy "Authenticated users create own artisan applications"
     applicant_user_id = auth.uid()
     and nin_consent = true
     and nin_last4 ~ '^[0-9]{4}$'
-    and liveness_consent = true
+    and face_match_consent = true
     and applicant_email like '%@%'
     and identity_verification_status = 'pending'
     and subscription_status = 'pending'

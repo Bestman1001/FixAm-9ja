@@ -219,10 +219,12 @@ const joinStepTitle = document.querySelector("#joinStepTitle");
 const joinProgressBar = document.querySelector("#joinProgressBar");
 const joinOtpField = document.querySelector("#joinOtpField");
 const joinOtpInput = document.querySelector("#joinOtp");
+const joinGoogleButton = document.querySelector("#joinGoogleButton");
 let selectedQuoteArtisan = null;
 let showAllServices = false;
 let joinStep = 1;
 let joinOtpRequestedFor = "";
+const googleJoinIntentKey = "fixam9ja.googleJoinIntent";
 
 const supabaseSettings = window.FIXAM_SUPABASE || {};
 const supabaseClient =
@@ -487,9 +489,12 @@ function renderCards(matches) {
         (artisan) => `
           <article class="artisan-card">
             <div class="artisan-top">
-              <div>
-                <h3>${artisan.name}</h3>
-                <p>${artisan.category} in ${artisanLocation(artisan)}</p>
+              <div class="artisan-identity">
+                <div class="artisan-card-avatar">${artisan.imageUrl ? `<img src="${escapeHtml(artisan.imageUrl)}" alt="${escapeHtml(artisan.name)}" />` : escapeHtml(artisan.initials)}</div>
+                <div>
+                  <h3>${artisan.name}</h3>
+                  <p>${artisan.category} in ${artisanLocation(artisan)}</p>
+                </div>
               </div>
               <span class="rating">${displayRating(artisan)}</span>
             </div>
@@ -571,6 +576,70 @@ document.querySelector("#joinEmail").addEventListener("input", () => {
   joinOtpField.hidden = true;
   joinNextButton.textContent = "Continue";
 });
+
+joinGoogleButton.addEventListener("click", async () => {
+  if (!supabaseClient) {
+    setJoinStatus("Google sign-in is unavailable. Please use the email verification code.", "error");
+    return;
+  }
+
+  sessionStorage.setItem(googleJoinIntentKey, JSON.stringify({
+    role: "artisan",
+    fullName: document.querySelector("#joinName").value.trim(),
+    phone: document.querySelector("#joinPhone").value.trim(),
+  }));
+  joinGoogleButton.disabled = true;
+  setJoinStatus("Opening Google sign-in...", "");
+  const { error } = await supabaseClient.auth.signInWithOAuth({
+    provider: "google",
+    options: { redirectTo: googleJoinRedirectUrl() },
+  });
+  if (error) {
+    joinGoogleButton.disabled = false;
+    setJoinStatus(`Google sign-in could not start: ${error.message}`, "error");
+  }
+});
+
+async function restoreGoogleJoin() {
+  const hasGoogleIntent = Boolean(sessionStorage.getItem(googleJoinIntentKey));
+  if (!supabaseClient || (new URLSearchParams(window.location.search).get("auth") !== "google" && !hasGoogleIntent)) return;
+  const { data, error } = await supabaseClient.auth.getSession();
+  const user = data.session?.user;
+  if (error || !user?.email) {
+    setJoinStatus("Google sign-in could not be completed. Please try again or use the email verification code.", "error");
+    return;
+  }
+
+  let intent = {};
+  try { intent = JSON.parse(sessionStorage.getItem(googleJoinIntentKey) || "{}"); } catch (_error) { intent = {}; }
+  const fullName = intent.fullName || user.user_metadata?.full_name || user.user_metadata?.name || "";
+  const phone = intent.phone || user.user_metadata?.phone || "";
+  document.querySelector("#joinName").value = fullName;
+  document.querySelector("#joinEmail").value = user.email;
+  document.querySelector("#joinPhone").value = phone;
+  try {
+    await saveInlineArtisanProfile(user, {
+      fullName,
+      email: user.email.toLowerCase(),
+      phone: normalizeNigerianPhone(phone),
+    });
+    sessionStorage.removeItem(googleJoinIntentKey);
+    const cleanUrl = new URL(window.location.href);
+    cleanUrl.searchParams.delete("auth");
+    history.replaceState({}, "", cleanUrl);
+    showJoinStep(1);
+    document.querySelector("#join").scrollIntoView({ block: "start" });
+    setJoinStatus("Google account connected. Add your phone number if needed, then continue.", "success");
+  } catch (profileError) {
+    setJoinStatus(profileError.message || "The artisan account could not be prepared.", "error");
+  }
+}
+
+function googleJoinRedirectUrl() {
+  const url = new URL("/", window.location.origin);
+  url.searchParams.set("auth", "google");
+  return url.href;
+}
 
 async function ensureInlineArtisanSession() {
   if (!supabaseClient) {
@@ -1017,8 +1086,8 @@ joinForm.addEventListener("submit", async (event) => {
     nin_last4: nin.slice(-4),
     nin_consent: hasNinConsent,
     nin_consent_at: new Date().toISOString(),
-    liveness_consent: hasNinConsent,
-    liveness_consent_at: new Date().toISOString(),
+    face_match_consent: hasNinConsent,
+    face_match_consent_at: new Date().toISOString(),
     identity_verification_status: "pending",
     verification_media_count: 0,
     subscription_status: "pending",
@@ -1117,7 +1186,7 @@ async function verifyNinForApplication({ applicationCode, applicantEmail, fullNa
       full_name: fullName,
       phone,
       nin,
-      liveness_consent: true,
+      face_match_consent: true,
       consent: true,
     },
   });
@@ -1197,7 +1266,7 @@ async function loadRealArtisans() {
     return;
   }
 
-  const legacyColumns = "id, state, area, category, business_name, lat, lng, rating, jobs, response_time, plan, subscription_plan, subscription_status, bio, skills, availability, service_radius, completed_jobs, verification_status, verification_checks, portfolio_items, profile_status";
+  const legacyColumns = "id, state, area, category, business_name, profile_image_url, lat, lng, rating, jobs, response_time, plan, subscription_plan, subscription_status, bio, skills, availability, service_radius, completed_jobs, verification_status, verification_checks, portfolio_items, profile_status";
   const fetchArtisans = (columns) => supabaseClient
       .from("artisans")
       .select(columns)
@@ -1236,6 +1305,7 @@ async function loadRealArtisans() {
     plan: artisan.plan || "Basic",
     subscription: artisan.subscription_plan || "monthly",
     subscriptionStatus: artisan.subscription_status || "active",
+    imageUrl: safePublicImageUrl(artisan.profile_image_url),
     initials: artisan.business_name
       .split(" ")
       .slice(0, 2)
@@ -1429,7 +1499,7 @@ async function launchQoreIdCollection(action) {
         qoreIdCompleted = true;
         exitQoreIdMode();
         const completedAction = currentQoreIdAction;
-        setJoinStatus("Identity check completed. Continue to subscription; checkout will become available once FixAm confirms the result. Do not repeat your paid identity check.", "success", {
+        setJoinStatus("NIN face match submitted. Sign in to your account to follow the result and add your public profile photograph. Do not repeat the paid identity check.", "success", {
           applicationCode: completedAction.applicationCode,
           plan: completedAction.plan,
           amount: completedAction.amount,
@@ -1655,7 +1725,7 @@ function isMissingLocationColumn(error) {
 function openProfile(artisan) {
   profileContent.innerHTML = `
     <div class="profile-hero">
-      <div class="profile-avatar">${artisan.initials}</div>
+      <div class="profile-avatar">${artisan.imageUrl ? `<img src="${escapeHtml(artisan.imageUrl)}" alt="${escapeHtml(artisan.name)}" />` : escapeHtml(artisan.initials)}</div>
       <div>
         <p class="eyebrow">${artisan.category} in ${artisanLocation(artisan)}</p>
         <h2 id="profileTitle">${artisan.name}</h2>
@@ -1734,6 +1804,7 @@ syncAreas();
 syncJoinAreas();
 render();
 initializeDirectory();
+restoreGoogleJoin();
 
 async function initializeDirectory() {
   await loadServiceCategories();
@@ -1748,4 +1819,14 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+function safePublicImageUrl(value) {
+  if (!value) return "";
+  try {
+    const url = new URL(value, window.location.origin);
+    return url.protocol === "https:" ? url.href : "";
+  } catch (_error) {
+    return "";
+  }
 }

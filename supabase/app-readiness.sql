@@ -84,6 +84,7 @@ begin
     applicant_user_id = null, nin_last4 = null,
     nin_consent = false, nin_consent_at = null,
     liveness_consent = false, liveness_consent_at = null,
+    face_match_consent = false, face_match_consent_at = null,
     identity_verification_reference = null
   where applicant_user_id = account_id;
 
@@ -153,7 +154,7 @@ create policy "Authenticated users create own artisan applications"
     applicant_user_id = auth.uid()
     and nin_consent = true
     and nin_last4 ~ '^[0-9]{4}$'
-    and liveness_consent = true
+    and face_match_consent = true
     and applicant_email like '%@%'
     and identity_verification_status = 'pending'
     and subscription_status = 'pending'

@@ -7,3 +7,4 @@ dist/
 !.env.example
 .pnpm-store/
 tmp/billing-tests/
+supabase/.temp/

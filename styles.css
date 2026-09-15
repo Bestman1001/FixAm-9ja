@@ -154,6 +154,44 @@ button:disabled {
   border: 1px solid var(--line);
 }
 
+.google-action {
+  display: inline-flex;
+  min-height: 50px;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 0 22px;
+  color: var(--ink);
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-weight: 850;
+  box-shadow: 0 10px 24px rgba(15, 47, 43, 0.08);
+}
+
+.google-action span {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  color: #1a73e8;
+  background: #fff;
+  border: 1px solid #d7dee8;
+  border-radius: 50%;
+  font-weight: 950;
+}
+
+.join-google-option {
+  display: grid;
+  gap: 9px;
+  text-align: center;
+}
+
+.join-google-option small {
+  color: var(--muted);
+  font-weight: 750;
+}
+
 a.primary-action,
 a.secondary-action {
   display: inline-flex;
@@ -393,6 +431,33 @@ textarea {
   align-items: start;
   justify-content: space-between;
   gap: 12px;
+}
+
+.artisan-identity {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 12px;
+}
+
+.artisan-card-avatar {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  flex: 0 0 52px;
+  place-items: center;
+  overflow: hidden;
+  color: white;
+  background: var(--deep);
+  border-radius: 8px;
+  font-weight: 950;
+}
+
+.artisan-card-avatar img,
+.profile-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .artisan-card h3 {

@@ -86,7 +86,7 @@ async function deleteUser(admin: ReturnType<typeof createClient>, callerId: stri
 
   const cleanup = await Promise.all([
     admin.from("quote_requests").update({ customer_name: "Deleted customer", customer_phone: "deleted", job_location: "Location removed", job_details: "Details removed following account deletion", customer_user_id: null, review_token: null }).eq("customer_user_id", userId),
-    admin.from("artisan_applications").update({ full_name: "Deleted applicant", phone: "deleted", applicant_email: null, applicant_user_id: null, nin_last4: null, nin_consent: false, nin_consent_at: null, liveness_consent: false, liveness_consent_at: null, identity_verification_reference: null }).eq("applicant_user_id", userId),
+    admin.from("artisan_applications").update({ full_name: "Deleted applicant", phone: "deleted", applicant_email: null, applicant_user_id: null, nin_last4: null, nin_consent: false, nin_consent_at: null, liveness_consent: false, liveness_consent_at: null, face_match_consent: false, face_match_consent_at: null, identity_verification_reference: null }).eq("applicant_user_id", userId),
     admin.from("subscription_requests").update({ applicant_user_id: null, applicant_email: null, applicant_name: "Deleted applicant", applicant_phone: "deleted", payment_reference: null }).eq("applicant_user_id", userId),
     admin.from("artisan_reviews").update({ customer_name: "Deleted customer", customer_user_id: null }).eq("customer_user_id", userId),
     admin.from("artisans").update({ owner_user_id: null, profile_status: "paused" }).eq("owner_user_id", userId).eq("profile_status", "active"),

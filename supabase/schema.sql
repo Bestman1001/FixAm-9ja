@@ -324,6 +324,8 @@ alter table public.artisan_applications
   add column if not exists nin_consent_at timestamptz,
   add column if not exists liveness_consent boolean not null default false,
   add column if not exists liveness_consent_at timestamptz,
+  add column if not exists face_match_consent boolean not null default false,
+  add column if not exists face_match_consent_at timestamptz,
   add column if not exists verification_media_count integer not null default 0,
   add column if not exists identity_verification_status text not null default 'pending',
   add column if not exists identity_verification_reference text,
@@ -386,7 +388,7 @@ create policy "Authenticated users create own artisan applications"
     applicant_user_id = auth.uid()
     and nin_consent = true
     and nin_last4 ~ '^[0-9]{4}$'
-    and liveness_consent = true
+    and face_match_consent = true
     and applicant_email like '%@%'
     and identity_verification_status = 'pending'
     and subscription_status = 'pending'
@@ -604,6 +606,8 @@ create policy "Anyone can read active artisans"
     and verification_status = 'verified'
     and identity_verification_status = 'verified'
     and subscription_status in ('active', 'founding', 'free_trial')
+    and profile_image_url is not null
+    and btrim(profile_image_url) <> ''
   );
 
 create policy "Admins can manage artisans"

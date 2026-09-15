@@ -5,7 +5,7 @@ import vm from 'node:vm';
 const account = fs.readFileSync('account.js','utf8');
 const app = fs.readFileSync('app.js','utf8');
 function accountView() {
- const context={artisanNextStep:{},artisanProfile:{},claimProfileButton:{},artisanProfileForm:{},currentProfile:{role:'artisan'},window:{location:{href:'https://www.fixam9ja.com/account'}},URL,escapeHtml:s=>String(s),formatNaira:String};
+ const context={artisanNextStep:{},artisanProfile:{},claimProfileButton:{},artisanProfileForm:{},currentProfile:{role:'artisan'},window:{location:{href:'https://www.fixam9ja.com/account'}},URL,escapeHtml:s=>String(s),formatNaira:String,safePublicImageUrl:value=>value || ''};
  vm.createContext(context);
  vm.runInContext(account.slice(account.indexOf('function renderArtisanNextStep('),account.indexOf('function fillArtisanProfileForm(')),context);
  return context;
@@ -18,8 +18,17 @@ test('pending owned application shows waiting status and never asks to claim or 
  assert.doesNotMatch(c.artisanNextStep.innerHTML,/Continue to subscription/);
  assert.equal(c.claimProfileButton.hidden,true);
 });
-test('verified application can proceed to correct billing plan before a public listing exists',()=>{
+test('verified application waits for its automated artisan profile',()=>{
  const c=accountView(); c.renderArtisanNextStep([{application_code:'F9-A-123',identity_verification_status:'verified',subscription_plan:'biannual'}],[]);
+ assert.match(c.artisanNextStep.innerHTML,/preparing your artisan profile/);
+ assert.doesNotMatch(c.artisanNextStep.innerHTML,/Continue to subscription/);
+});
+test('verified artisan adds a public photograph before payment',()=>{
+ const c=accountView(); const application={application_code:'F9-A-123',identity_verification_status:'verified',subscription_plan:'biannual'};
+ c.renderArtisanNextStep([application],[{identity_verification_status:'verified',profile_image_url:null}]);
+ assert.match(c.artisanNextStep.innerHTML,/Add your public profile photograph/);
+ assert.doesNotMatch(c.artisanNextStep.innerHTML,/Continue to subscription/);
+ c.renderArtisanNextStep([application],[{identity_verification_status:'verified',profile_image_url:'https:\/\/cdn.example.com\/photo.jpg'}]);
  assert.match(c.artisanNextStep.innerHTML,/billing.html\?application=F9-A-123&plan=biannual/);
  assert.match(c.artisanNextStep.innerHTML,/Continue to subscription/);
 });

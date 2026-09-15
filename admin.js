@@ -821,8 +821,8 @@ function renderApplicationCard(application) {
           <span class="badge">${escapeHtml(application.preferred_plan)}</span>
           <span class="badge">NIN ****${escapeHtml(application.nin_last4 || "----")}</span>
           <span class="badge">${application.nin_consent ? "NIN consent captured" : "No NIN consent"}</span>
-          <span class="badge">${application.liveness_consent ? "Selfie/liveness consent" : "No selfie consent"}</span>
-          <span class="badge">${application.verification_media_count || 0} verification proof</span>
+          <span class="badge">${application.face_match_consent ? "NIN face-match consent" : "No face-match consent"}</span>
+          <span class="badge">QoreID provider capture</span>
           <span class="badge">${escapeHtml(application.identity_verification_status || "pending")}</span>
           <span class="badge">${escapeHtml(application.subscription_status || "pending")}</span>
           <span class="badge">${formatNaira(application.subscription_amount)}</span>

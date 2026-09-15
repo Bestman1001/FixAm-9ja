@@ -10,13 +10,13 @@
       title: "How artisans join FixAm 9ja",
       keywords: ["artisan", "register", "join", "onboarding", "profile"],
       answer:
-        "Use Join as Artisan, enter your details and portfolio, and complete the secure identity check. After verification, open Subscription & Payments to choose a plan and pay through Paystack."
+        "Use Join as Artisan, connect your Google account or verify your email, enter your details and complete the secure NIN face match. After verification, add your public profile photograph, then choose a plan and pay through Paystack."
     },
     {
-      title: "NIN and liveness verification",
+      title: "NIN face-match verification",
       keywords: ["nin", "identity", "verification", "liveness", "selfie", "qoreid"],
       answer:
-        "Artisans may be asked to complete NIN and selfie/liveness checks for trust and safety. A successful check helps the profile earn a verified identity badge. If an automated check cannot complete, FixAm 9ja may review the application manually."
+        "QoreID asks the artisan for one selfie and compares it with the photograph held against the supplied NIN. A successful match helps the profile earn a verified identity badge. The artisan then adds a separate public profile photograph for customers to see."
     },
     {
       title: "Accepting or declining quote leads",

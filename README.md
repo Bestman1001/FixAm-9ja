@@ -66,7 +66,7 @@ Phase 5 adds Supabase Auth account profiles and a public `fixam-media` Storage b
 
 ## Phase 7 Subscriptions
 
-Phase 7 uses Paystack recurring card subscriptions. Verified artisans choose a plan on `billing.html`, pay through hosted checkout, view payment history, manage their card, and cancel future renewal. Server verification and signed webhooks activate paid access; duplicate events cannot extend the same payment twice. Public marketplace visibility still requires an active profile, verified identity, and eligible membership within its paid term. See `PAYSTACK-SETUP.md` for secrets, plans, migrations, deployment and live validation.
+Phase 7 uses Paystack subscriptions. Verified artisans add a public profile photograph, choose a plan on `billing.html`, pay through hosted checkout, view payment history, manage billing, and cancel future renewal. Server verification and signed webhooks activate paid access; duplicate events cannot extend the same payment twice. Public marketplace visibility requires an active profile, a verified NIN face match, a public profile photograph, and eligible membership within its paid term. Customer and artisan accounts can use Google OAuth or the existing email sign-in methods. See `PAYSTACK-SETUP.md` for secrets, plans, migrations, deployment and live validation.
 
 ## Run Locally
 
