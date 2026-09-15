@@ -1,4 +1,4 @@
-const CACHE_NAME = "fixam9ja-shell-v13";
+const CACHE_NAME = "fixam9ja-shell-v14";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -21,7 +21,8 @@ const APP_SHELL = [
   "./location-data.js",
   "./supabase-config.js",
   "./fixam-logo.jpg",
-  "./fixam-logo-header.png"
+  "./fixam-logo-header.png",
+  "./google-g-logo.png"
 ];
 
 self.addEventListener("install", (event) => {

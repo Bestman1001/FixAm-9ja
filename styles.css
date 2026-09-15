@@ -161,24 +161,19 @@ button:disabled {
   justify-content: center;
   gap: 12px;
   padding: 0 22px;
-  color: var(--ink);
-  background: white;
-  border: 1px solid var(--line);
+  color: #1f1f1f;
+  background: #fff;
+  border: 1px solid #747775;
   border-radius: 8px;
   font-weight: 850;
   box-shadow: 0 10px 24px rgba(15, 47, 43, 0.08);
 }
 
-.google-action span {
-  display: grid;
-  width: 26px;
-  height: 26px;
-  place-items: center;
-  color: #1a73e8;
-  background: #fff;
-  border: 1px solid #d7dee8;
-  border-radius: 50%;
-  font-weight: 950;
+.google-action .google-icon {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  object-fit: contain;
 }
 
 .join-google-option {

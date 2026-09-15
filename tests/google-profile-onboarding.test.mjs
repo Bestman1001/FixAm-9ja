@@ -11,6 +11,8 @@ const migration = fs.readFileSync('supabase/nin-face-match-profile-readiness.sql
 test('customer and artisan entry points offer Google OAuth through Supabase', () => {
   assert.match(home, /id="joinGoogleButton"/);
   assert.match(account, /id="googleSignInButton"/);
+  assert.match(home, /class="google-icon" src="google-g-logo\.png"/);
+  assert.match(account, /class="google-icon" src="google-g-logo\.png"/);
   for (const source of [homeScript, accountScript]) {
     assert.match(source, /signInWithOAuth\(\{[\s\S]*provider:\s*"google"/);
     assert.match(source, /redirectTo:/);
