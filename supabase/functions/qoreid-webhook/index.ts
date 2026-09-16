@@ -348,10 +348,10 @@ function normalizeQoreIdStatus(payload: unknown) {
     return "failed";
   }
 
-  // Completion and transport success do not establish a positive identity verdict.
-  // A negative component takes precedence over any positive component above.
-  if (faceResults.length && !faceResults.some((value) => value.match === true || value.verified === true)) return "pending";
-  if (livenessResults.length && !livenessResults.some((value) => value.isLive === true)) return "pending";
+  // QoreID's final `verified` decision is authoritative. Some NIN Face Match
+  // payloads include component objects without boolean `match` fields, so the
+  // absence of that optional field must not override the final decision. Any
+  // explicit negative component has already been rejected above.
   if (faceResults.some((value) => value.match === true || value.verified === true) ||
       statusValues.some((value) => ["verified", "passed", "approved"].includes(value)) ||
       text.includes('"verified":true')) {

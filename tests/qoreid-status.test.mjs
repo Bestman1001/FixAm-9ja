@@ -25,10 +25,10 @@ test('NIN Face Match final verified decision is accepted when generic metadata h
   status:{state:'complete',status:'verified'}
  }),'verified');
 });
-test('NIN face match requires an explicit positive biometric match',()=>{
+test('NIN face match honours the final provider decision while explicit mismatches still fail',()=>{
  assert.equal(status({summary:{face_verification_check:{match:true,match_score:99.1}},status:{state:'complete',status:'verified'}}),'verified');
  assert.equal(status({summary:{face_verification_check:{match:false}},status:{state:'complete',status:'verified'}}),'failed');
- assert.equal(status({summary:{face_verification_check:{match:null}},status:{state:'complete',status:'verified'}}),'pending');
+ assert.equal(status({summary:{face_verification_check:{match:null}},status:{state:'complete',status:'verified'}}),'verified');
  assert.equal(status({data:{summary:{face_verification_check:{match:true}}},status:'complete'}),'verified');
 });
 
