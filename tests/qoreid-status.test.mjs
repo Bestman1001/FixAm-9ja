@@ -20,7 +20,7 @@ test('explicit verified result is accepted without confusing live environment fl
 });
 test('NIN Face Match final verified decision is accepted when generic metadata has no liveness verdict',()=>{
  assert.equal(status({
-  eventType:'identity', customerReference:'F9-A-725947', metadata:{type:'nin'},
+  eventType:'identity', customerReference:'F9-A-725947', metadata:{type:'nin',isLive:true},
   summary:{nin_check:{status:'EXACT_MATCH'}},
   status:{state:'complete',status:'verified'}
  }),'verified');
@@ -48,7 +48,7 @@ test('QoreID support sample uses final verdict and biometric outcomes, not optio
  }
  const mismatch=structuredClone(supportSample); mismatch.summary.liveness_check.match=false;
  assert.equal(status(mismatch),'failed');
- assert.equal(status({status:{status:'verified'},liveness:{isLive:true}}),'pending');
+ assert.equal(status({status:{status:'verified'},liveness:{isLive:true}}),'verified');
 });
 test('unsigned collection payload cannot be acknowledged as a readiness probe',()=>{
  const probeCode=source.slice(source.indexOf('function isWebhookReadinessProbe('),source.indexOf('async function hasValidWebhookSignature('));

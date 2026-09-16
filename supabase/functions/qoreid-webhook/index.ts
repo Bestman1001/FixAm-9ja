@@ -351,7 +351,7 @@ function normalizeQoreIdStatus(payload: unknown) {
   // Completion and transport success do not establish a positive identity verdict.
   // A negative component takes precedence over any positive component above.
   if (faceResults.length && !faceResults.some((value) => value.match === true || value.verified === true)) return "pending";
-  if (livenessResults.length && !livenessResults.some((value) => value.isLive === true && value.match === true)) return "pending";
+  if (livenessResults.length && !livenessResults.some((value) => value.isLive === true)) return "pending";
   if (faceResults.some((value) => value.match === true || value.verified === true) ||
       statusValues.some((value) => ["verified", "passed", "approved"].includes(value)) ||
       text.includes('"verified":true')) {
