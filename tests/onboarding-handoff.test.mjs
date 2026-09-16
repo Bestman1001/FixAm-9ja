@@ -44,15 +44,16 @@ test('artisan onboarding progress is derived from saved application, verificatio
  artisan.subscription_status='active';
  assert.deepEqual([...c.artisanOnboardingState([application],[artisan]).complete],[true,true,true,true,true]);
 });
-test('QoreID success keeps subscription action; close cannot overwrite it and next attempt uses its own application',async()=>{
- const handlers={}; const messages=[]; const sdk={on:(event,cb)=>handlers[event]=cb,start:async()=>{}};
- const c={setJoinStatus:(...args)=>messages.push(args),enterQoreIdMode(){},exitQoreIdMode(){},loadQoreIdSdk:async()=>sdk,splitFullName:()=>({first:'Test',last:'User'}),normalizeNigerianPhone:s=>s};
+test('QoreID success redirects to the matching artisan account handoff and close cannot overwrite it',async()=>{
+ const handlers={}; const messages=[]; const redirects=[]; const sdk={on:(event,cb)=>handlers[event]=cb,start:async()=>{}};
+ const c={setJoinStatus:(...args)=>messages.push(args),rememberArtisanOnboarding(){},enterQoreIdMode(){},exitQoreIdMode(){},loadQoreIdSdk:async()=>sdk,splitFullName:()=>({first:'Test',last:'User'}),normalizeNigerianPhone:s=>s,URL,window:{location:{origin:'https://www.fixam9ja.com',assign:url=>redirects.push(url)},setTimeout:callback=>callback()}};
  vm.createContext(c);
  vm.runInContext(app.slice(app.indexOf('let currentQoreIdAction ='),app.indexOf('function enterQoreIdMode(')),c);
  for(const applicationCode of ['F9-A-first','F9-A-second']) {
   await c.launchQoreIdCollection({applicationCode,amount:2500,plan:'monthly'});
   handlers.success(); const message=messages.at(-1); handlers.close();
-  assert.equal(messages.at(-1),message); assert.equal(message[2].applicationCode,applicationCode);
-  assert.equal(message[2].amount,2500); assert.equal(message[2].sdkSessionToken,undefined);
+  assert.equal(messages.at(-1),message);
+  assert.match(message[0],/Taking you to your artisan account/);
+  assert.match(redirects.at(-1),new RegExp(`account\\.html\\?onboarding=artisan&source=verification&application=${applicationCode}`));
  }
 });

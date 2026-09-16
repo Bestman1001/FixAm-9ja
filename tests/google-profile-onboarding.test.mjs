@@ -35,6 +35,9 @@ test('artisan authentication lands on a guided, resumable account checklist', ()
   assert.match(accountScript, /localStorage\.setItem\(artisanOnboardingIntentKey/);
   assert.match(homeScript, /async function resumeArtisanOnboarding\(/);
   assert.match(homeScript, /Welcome back\. Your account details are saved/);
+  assert.match(homeScript, /continueToArtisanAccount\(completedAction\)/);
+  assert.match(accountScript, /function scheduleVerificationStatusRefresh\(/);
+  assert.match(accountScript, /Confirming your QoreID result/);
 });
 
 test('new artisan applications record face-match consent', () => {

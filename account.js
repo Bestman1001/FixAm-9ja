@@ -56,6 +56,8 @@ const googleAuthIntentKey = "fixam9ja.googleAuthIntent";
 const homeGoogleJoinIntentKey = "fixam9ja.googleJoinIntent";
 const artisanOnboardingIntentKey = "fixam9ja.artisanOnboardingIntent";
 let onboardingArrivalHandled = false;
+let verificationRefreshTimer = null;
+let verificationRefreshCount = 0;
 
 if (!supabaseClient) {
   setNote(authNote, "Supabase is not configured yet. Accounts cannot be used.", "error");
@@ -1025,7 +1027,10 @@ function renderArtisanOnboardingGuide(applications, artisans) {
   const action = artisanOnboardingAction(state);
   artisanOnboardingContinue.textContent = action.label;
   artisanOnboardingContinue.href = action.url;
-  artisanOnboardingHint.textContent = action.hint;
+  artisanOnboardingHint.textContent = request.source === "verification" && state.identity === "pending"
+    ? "FixAm 9ja is confirming the completed QoreID result automatically. Keep this page open; you do not need to repeat the check."
+    : action.hint;
+  scheduleVerificationStatusRefresh(state, request);
 
   if (request.arrivedNow && !onboardingArrivalHandled) {
     onboardingArrivalHandled = true;
@@ -1035,9 +1040,27 @@ function renderArtisanOnboardingGuide(applications, artisans) {
       const cleanUrl = new URL(window.location.href);
       cleanUrl.searchParams.delete("onboarding");
       cleanUrl.searchParams.delete("source");
+      cleanUrl.searchParams.delete("application");
       history.replaceState({}, "", cleanUrl);
     });
   }
+}
+
+function scheduleVerificationStatusRefresh(state, request) {
+  if (verificationRefreshTimer) {
+    window.clearTimeout(verificationRefreshTimer);
+    verificationRefreshTimer = null;
+  }
+  if (request.source !== "verification" || state.identity !== "pending" || verificationRefreshCount >= 8) return;
+
+  verificationRefreshTimer = window.setTimeout(() => {
+    verificationRefreshTimer = null;
+    verificationRefreshCount += 1;
+    loadDashboard({
+      message: `Confirming your QoreID result (${verificationRefreshCount}/8)...`,
+      type: "",
+    });
+  }, 2500);
 }
 
 function artisanOnboardingAction(state) {
@@ -1253,6 +1276,10 @@ async function deleteCurrentAccount() {
 }
 
 function setSignedOut() {
+  if (verificationRefreshTimer) {
+    window.clearTimeout(verificationRefreshTimer);
+    verificationRefreshTimer = null;
+  }
   authPanel.hidden = false;
   dashboardPanel.hidden = true;
   signOutButton.hidden = true;

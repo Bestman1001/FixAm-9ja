@@ -335,7 +335,7 @@ function normalizeQoreIdStatus(payload: unknown) {
   // not a biometric verdict and must not be used here.
   const livenessResults = [source.liveness, source.summary?.liveness_check,
     source.eventType === "identity" && source.metadata?.type === "nin" ? source.metadata : null]
-    .filter((value) => value && typeof value === "object");
+    .filter((value) => value && typeof value === "object" && ("isLive" in value || "match" in value));
   if (livenessResults.some((value) => value.isLive === false || value.match === false)) return "failed";
   const text = JSON.stringify(payload).toLowerCase();
   const statusValues = extractStatusCandidates(payload).map((value) => value.toLowerCase().trim().replace(/[\s-]+/g, "_"));

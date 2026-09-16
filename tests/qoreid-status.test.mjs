@@ -18,6 +18,13 @@ test('failed liveness overrides completion and successful identity components',(
 test('explicit verified result is accepted without confusing live environment flag',()=>{
  assert.equal(status({status:{state:'COMPLETE',status:'VERIFIED'},isLive:true}),'verified');
 });
+test('NIN Face Match final verified decision is accepted when generic metadata has no liveness verdict',()=>{
+ assert.equal(status({
+  eventType:'identity', customerReference:'F9-A-725947', metadata:{type:'nin'},
+  summary:{nin_check:{status:'EXACT_MATCH'}},
+  status:{state:'complete',status:'verified'}
+ }),'verified');
+});
 test('NIN face match requires an explicit positive biometric match',()=>{
  assert.equal(status({summary:{face_verification_check:{match:true,match_score:99.1}},status:{state:'complete',status:'verified'}}),'verified');
  assert.equal(status({summary:{face_verification_check:{match:false}},status:{state:'complete',status:'verified'}}),'failed');

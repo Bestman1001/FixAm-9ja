@@ -1550,11 +1550,9 @@ async function launchQoreIdCollection(action) {
         qoreIdCompleted = true;
         exitQoreIdMode();
         const completedAction = currentQoreIdAction;
-        setJoinStatus("NIN face match submitted. Sign in to your account to follow the result and add your public profile photograph. Do not repeat the paid identity check.", "success", {
-          applicationCode: completedAction.applicationCode,
-          plan: completedAction.plan,
-          amount: completedAction.amount,
-        });
+        setJoinStatus("NIN face match submitted successfully. Taking you to your artisan account while FixAm 9ja confirms the result...", "success");
+        rememberArtisanOnboarding("verification");
+        window.setTimeout(() => continueToArtisanAccount(completedAction), 700);
       });
       QoreID.on("error", () => {
         exitQoreIdMode();
@@ -1589,6 +1587,14 @@ async function launchQoreIdCollection(action) {
       "error",
     );
   }
+}
+
+function continueToArtisanAccount(action) {
+  const url = new URL("account.html", window.location.origin);
+  url.searchParams.set("onboarding", "artisan");
+  url.searchParams.set("source", "verification");
+  if (action?.applicationCode) url.searchParams.set("application", action.applicationCode);
+  window.location.assign(url.href);
 }
 
 function enterQoreIdMode() {
