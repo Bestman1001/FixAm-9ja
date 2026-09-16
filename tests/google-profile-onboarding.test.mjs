@@ -19,6 +19,22 @@ test('customer and artisan entry points offer Google OAuth through Supabase', ()
   }
   assert.match(homeScript, /hasGoogleIntent\s*=\s*Boolean\(sessionStorage\.getItem\(googleJoinIntentKey\)\)/);
   assert.match(homeScript, /auth"\) !== "google" && !hasGoogleIntent/);
+  assert.match(homeScript, /new URL\("\/account\.html", window\.location\.origin\)/);
+  assert.match(homeScript, /url\.searchParams\.set\("onboarding", "artisan"\)/);
+});
+
+test('artisan authentication lands on a guided, resumable account checklist', () => {
+  assert.match(account, /id="artisanOnboardingGuide"/);
+  assert.match(account, /id="artisanOnboardingChecklist"/);
+  assert.match(account, /id="artisanOnboardingContinue"/);
+  assert.match(accountScript, /function artisanOnboardingState\(/);
+  assert.match(accountScript, /function renderArtisanOnboardingGuide\(/);
+  assert.match(accountScript, /Continue artisan registration/);
+  assert.match(accountScript, /Add public profile photograph/);
+  assert.match(accountScript, /Choose payment and activate membership/);
+  assert.match(accountScript, /localStorage\.setItem\(artisanOnboardingIntentKey/);
+  assert.match(homeScript, /async function resumeArtisanOnboarding\(/);
+  assert.match(homeScript, /Welcome back\. Your account details are saved/);
 });
 
 test('new artisan applications record face-match consent', () => {

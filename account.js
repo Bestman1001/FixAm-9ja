@@ -27,6 +27,13 @@ const quoteLeadList = document.querySelector("#quoteLeadList");
 const quoteLeadBadge = document.querySelector("#quoteLeadBadge");
 const applicationList = document.querySelector("#applicationList");
 const artisanNextStep = document.querySelector("#artisanNextStep");
+const artisanOnboardingGuide = document.querySelector("#artisanOnboardingGuide");
+const artisanOnboardingWelcome = document.querySelector("#artisanOnboardingWelcome");
+const artisanOnboardingSummary = document.querySelector("#artisanOnboardingSummary");
+const artisanOnboardingProgress = document.querySelector("#artisanOnboardingProgress");
+const artisanOnboardingChecklist = document.querySelector("#artisanOnboardingChecklist");
+const artisanOnboardingContinue = document.querySelector("#artisanOnboardingContinue");
+const artisanOnboardingHint = document.querySelector("#artisanOnboardingHint");
 const artisanProfile = document.querySelector("#artisanProfile");
 const mediaList = document.querySelector("#mediaList");
 const notificationList = document.querySelector("#notificationList");
@@ -46,6 +53,9 @@ let currentProfile = null;
 let ownedArtisan = null;
 let quoteRecords = new Map();
 const googleAuthIntentKey = "fixam9ja.googleAuthIntent";
+const homeGoogleJoinIntentKey = "fixam9ja.googleJoinIntent";
+const artisanOnboardingIntentKey = "fixam9ja.artisanOnboardingIntent";
+let onboardingArrivalHandled = false;
 
 if (!supabaseClient) {
   setNote(authNote, "Supabase is not configured yet. Accounts cannot be used.", "error");
@@ -62,6 +72,9 @@ authForm.addEventListener("submit", async (event) => {
   const phone = document.querySelector("#phone").value.trim();
   const role = document.querySelector("#accountRole").value;
 
+  if (role === "artisan") rememberArtisanOnboarding("password");
+  else clearArtisanOnboardingIntent();
+
   if (!password) {
     await sendEmailSignInLink();
     return;
@@ -75,7 +88,7 @@ authForm.addEventListener("submit", async (event) => {
           email,
           password,
           options: {
-            emailRedirectTo: accountRedirectUrl(),
+            emailRedirectTo: accountRedirectUrl(role, "password"),
             data: { full_name: fullName, phone, role },
           },
         })
@@ -104,6 +117,8 @@ magicLinkButton.addEventListener("click", async () => {
 googleSignInButton.addEventListener("click", async () => {
   if (!supabaseClient) return;
   const role = document.querySelector("#accountRole").value;
+  if (role === "artisan") rememberArtisanOnboarding("google");
+  else clearArtisanOnboardingIntent();
   sessionStorage.setItem(googleAuthIntentKey, JSON.stringify({
     role,
     fullName: document.querySelector("#fullName").value.trim(),
@@ -113,7 +128,7 @@ googleSignInButton.addEventListener("click", async () => {
   setNote(authNote, "Opening Google sign-in...", "");
   const { error } = await supabaseClient.auth.signInWithOAuth({
     provider: "google",
-    options: { redirectTo: accountRedirectUrl() },
+    options: { redirectTo: accountRedirectUrl(role, "google") },
   });
   if (error) {
     googleSignInButton.disabled = false;
@@ -133,12 +148,14 @@ async function sendEmailSignInLink() {
   const fullName = document.querySelector("#fullName").value.trim() || email.split("@")[0];
   const phone = document.querySelector("#phone").value.trim();
   const role = document.querySelector("#accountRole").value;
+  if (role === "artisan") rememberArtisanOnboarding("email");
+  else clearArtisanOnboardingIntent();
 
   setNote(authNote, "Sending your secure sign-in link...", "");
   const { error } = await supabaseClient.auth.signInWithOtp({
     email,
     options: {
-      emailRedirectTo: accountRedirectUrl(),
+      emailRedirectTo: accountRedirectUrl(role, "email"),
       data: { full_name: fullName, phone, role },
     },
   });
@@ -186,11 +203,15 @@ profileForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   if (!currentUser) return;
 
+  const selectedRole = document.querySelector("#profileRole").value;
+  if (selectedRole === "artisan") rememberArtisanOnboarding("account");
+  else clearArtisanOnboardingIntent();
+
   await saveUserProfile({
     email: currentUser.email,
     fullName: document.querySelector("#profileName").value.trim(),
     phone: document.querySelector("#profilePhone").value.trim(),
-    role: document.querySelector("#profileRole").value,
+    role: selectedRole,
   });
   await loadDashboard();
 });
@@ -467,6 +488,7 @@ async function loadDashboard(note = null) {
   renderApplications(applicationsResult.data || []);
   renderArtisanProfile(artisansResult.data || [], applicationsResult.data || []);
   renderArtisanNextStep(applicationsResult.data || [], artisansResult.data || []);
+  renderArtisanOnboardingGuide(applicationsResult.data || [], artisansResult.data || []);
   fillArtisanProfileForm();
   renderMedia(mediaResult.data || []);
   renderNotifications(notificationsResult.data || []);
@@ -489,14 +511,37 @@ async function loadDashboard(note = null) {
 
 async function loadProfile() {
   const { data } = await supabaseClient.from("user_profiles").select("*").eq("user_id", currentUser.id).maybeSingle();
-  if (data) return data;
-
+  const wantsArtisan = isArtisanOnboardingRequested();
   const googleIntent = readGoogleAuthIntent();
+  if (data) {
+    const updatedProfile = {
+      ...data,
+      full_name: data.full_name || googleIntent.fullName || currentUser.user_metadata?.full_name || currentUser.user_metadata?.name,
+      phone: data.phone || googleIntent.phone || currentUser.user_metadata?.phone || "",
+      role: wantsArtisan ? "artisan" : data.role,
+    };
+    if (
+      updatedProfile.role !== data.role ||
+      updatedProfile.full_name !== data.full_name ||
+      updatedProfile.phone !== data.phone
+    ) {
+      await saveUserProfile({
+        email: data.email || currentUser.email,
+        fullName: updatedProfile.full_name,
+        phone: updatedProfile.phone,
+        role: updatedProfile.role,
+      });
+    }
+    sessionStorage.removeItem(googleAuthIntentKey);
+    sessionStorage.removeItem(homeGoogleJoinIntentKey);
+    return updatedProfile;
+  }
+
   const fallback = {
     email: currentUser.email,
     full_name: googleIntent.fullName || currentUser.user_metadata?.full_name || currentUser.user_metadata?.name || currentUser.email?.split("@")[0] || "FixAm user",
     phone: googleIntent.phone || currentUser.user_metadata?.phone || "",
-    role: googleIntent.role === "artisan" ? "artisan" : (currentUser.user_metadata?.role || "customer"),
+    role: wantsArtisan || googleIntent.role === "artisan" ? "artisan" : (currentUser.user_metadata?.role || "customer"),
   };
   await saveUserProfile({
     email: fallback.email,
@@ -505,15 +550,57 @@ async function loadProfile() {
     role: fallback.role,
   });
   sessionStorage.removeItem(googleAuthIntentKey);
+  sessionStorage.removeItem(homeGoogleJoinIntentKey);
   return { user_id: currentUser.id, ...fallback };
 }
 
 function readGoogleAuthIntent() {
   try {
-    const intent = JSON.parse(sessionStorage.getItem(googleAuthIntentKey) || "{}");
+    const intent = JSON.parse(
+      sessionStorage.getItem(googleAuthIntentKey) || sessionStorage.getItem(homeGoogleJoinIntentKey) || "{}",
+    );
     return intent && typeof intent === "object" ? intent : {};
   } catch (_error) {
     return {};
+  }
+}
+
+function onboardingRequest() {
+  const params = new URLSearchParams(window.location.search);
+  let stored = {};
+  try {
+    stored = JSON.parse(localStorage.getItem(artisanOnboardingIntentKey) || "{}");
+  } catch (_error) {
+    stored = {};
+  }
+  return {
+    active: params.get("onboarding") === "artisan" || stored.active === true,
+    source: params.get("source") || stored.source || "account",
+    arrivedNow: params.get("onboarding") === "artisan",
+  };
+}
+
+function isArtisanOnboardingRequested() {
+  return onboardingRequest().active;
+}
+
+function rememberArtisanOnboarding(source = "account") {
+  try {
+    localStorage.setItem(artisanOnboardingIntentKey, JSON.stringify({
+      active: true,
+      source,
+      updatedAt: new Date().toISOString(),
+    }));
+  } catch (_error) {
+    // The database milestones still preserve progress when browser storage is unavailable.
+  }
+}
+
+function clearArtisanOnboardingIntent() {
+  try {
+    localStorage.removeItem(artisanOnboardingIntentKey);
+  } catch (_error) {
+    // Storage may be unavailable in strict privacy modes.
   }
 }
 
@@ -844,25 +931,166 @@ function renderArtisanNextStep(applications, artisans) {
   const artisan = artisans[0];
   if (!application && !artisan) {
     artisanNextStep.innerHTML = '<h3>Start your artisan application</h3><p>Complete your business details and identity check to set up your membership.</p><a class="primary-action" href="index.html#join">Apply as an artisan</a>';
+    artisanNextStep.hidden = true;
     return;
   }
   const identity = application?.identity_verification_status || artisan?.identity_verification_status;
   if (identity !== "verified") {
     artisanNextStep.innerHTML = `<h3>${identity === "failed" ? "Identity verification needs attention" : "Waiting for your verification result"}</h3><p>${identity === "failed" ? "Contact verification support to review your existing check." : "Your application is linked to this account. If you completed QoreID, use Refresh to check for the result. You do not need to claim a profile or repeat a paid identity check."}</p><p>Subscription checkout becomes available once FixAm confirms your identity.</p><a href="mailto:verification@fixam9ja.com">Contact verification support</a>`;
+    artisanNextStep.hidden = true;
     return;
   }
   if (!artisan) {
     artisanNextStep.innerHTML = '<h3>Identity verified — preparing your artisan profile</h3><p>Your face match has passed. Use Refresh shortly so FixAm can finish connecting your profile before you add its public photograph.</p>';
+    artisanNextStep.hidden = true;
     return;
   }
   if (!safePublicImageUrl(artisan.profile_image_url)) {
     artisanNextStep.innerHTML = '<h3>Add your public profile photograph</h3><p>Your NIN face match has passed. Take or choose the photograph customers should see before you continue to membership and payment.</p><a class="primary-action" href="#profilePhotoCard">Add profile photograph</a>';
+    artisanNextStep.hidden = true;
     return;
   }
   const url = new URL("billing.html", window.location.href);
   if (application) url.searchParams.set("application", application.application_code);
   url.searchParams.set("plan", application?.subscription_plan || artisan?.subscription_plan || "monthly");
   artisanNextStep.innerHTML = `<h3>Your profile is ready for membership</h3><p>Choose your subscription and preferred Paystack payment method. Your verified application and public photograph are already linked to your account.</p><a class="primary-action" href="${escapeHtml(url.href)}">Continue to subscription & payments</a>`;
+  artisanNextStep.hidden = true;
+}
+
+function artisanOnboardingState(applications, artisans) {
+  const application = applications[0] || null;
+  const artisan = artisans[0] || null;
+  const identityStatuses = [application?.identity_verification_status, artisan?.identity_verification_status]
+    .filter(Boolean)
+    .map((status) => String(status).toLowerCase());
+  const identity = identityStatuses.includes("verified")
+    ? "verified"
+    : identityStatuses.includes("failed")
+      ? "failed"
+      : "pending";
+  const hasPhoto = Boolean(safePublicImageUrl(artisan?.profile_image_url));
+  const subscriptionStatuses = [artisan?.subscription_status, application?.subscription_status]
+    .filter(Boolean)
+    .map((status) => String(status).toLowerCase());
+  const hasMembership = subscriptionStatuses.some((status) => ["active", "founding", "free_trial"].includes(status));
+  const complete = [true, Boolean(application || artisan), identity === "verified", hasPhoto, hasMembership];
+  const currentIndex = complete.findIndex((item) => !item);
+  return { application, artisan, identity, hasPhoto, hasMembership, complete, currentIndex };
+}
+
+function renderArtisanOnboardingGuide(applications, artisans) {
+  if (!artisanOnboardingGuide) return;
+  const isArtisan = currentProfile?.role === "artisan";
+  artisanOnboardingGuide.hidden = !isArtisan;
+  if (!isArtisan) return;
+
+  const state = artisanOnboardingState(applications, artisans);
+  const completedCount = state.complete.filter(Boolean).length;
+  const firstName = String(currentProfile?.full_name || "Artisan").trim().split(/\s+/)[0];
+  const request = onboardingRequest();
+  const isComplete = completedCount === state.complete.length;
+  if (!isComplete) rememberArtisanOnboarding(request.source);
+  else clearArtisanOnboardingIntent();
+
+  const sourceLabel = request.source === "google"
+    ? "Your Google account is connected."
+    : request.source === "email"
+      ? "Your email is verified and your account is connected."
+      : "Your FixAm 9ja account is connected.";
+  artisanOnboardingWelcome.textContent = isComplete
+    ? `Your artisan setup is complete, ${firstName}`
+    : `Welcome, ${firstName} — let’s finish your artisan profile`;
+  artisanOnboardingSummary.textContent = isComplete
+    ? "Your identity, public photograph, and membership are ready. Customers can now find your active profile."
+    : `${sourceLabel} Continue from the highlighted step below; you will not need to repeat completed steps.`;
+  artisanOnboardingProgress.textContent = `${completedCount} of ${state.complete.length} complete`;
+
+  const steps = [
+    ["Account connected", "Your secure FixAm 9ja sign-in is ready."],
+    ["Application details", "Tell customers about your trade, location, and experience."],
+    ["NIN face match", "Confirm that your selfie matches your NIN identity photograph."],
+    ["Public profile photograph", "Choose the clear photograph customers will see."],
+    ["Membership and payment", "Activate your listing with your preferred payment method."],
+  ];
+  artisanOnboardingChecklist.innerHTML = steps.map(([title, description], index) => {
+    const status = state.complete[index] ? "complete" : index === state.currentIndex ? "current" : "upcoming";
+    const stateLabel = status === "complete" ? "Done" : status === "current" ? "Next" : "Later";
+    return `<li class="is-${status}">
+      <span class="onboarding-step-icon" aria-hidden="true">${status === "complete" ? "✓" : index + 1}</span>
+      <span class="onboarding-step-copy"><strong>${escapeHtml(title)}</strong><small>${escapeHtml(description)}</small></span>
+      <span class="onboarding-step-state">${stateLabel}</span>
+    </li>`;
+  }).join("");
+
+  const action = artisanOnboardingAction(state);
+  artisanOnboardingContinue.textContent = action.label;
+  artisanOnboardingContinue.href = action.url;
+  artisanOnboardingHint.textContent = action.hint;
+
+  if (request.arrivedNow && !onboardingArrivalHandled) {
+    onboardingArrivalHandled = true;
+    requestAnimationFrame(() => {
+      artisanOnboardingGuide.scrollIntoView({ behavior: "smooth", block: "start" });
+      artisanOnboardingGuide.focus({ preventScroll: true });
+      const cleanUrl = new URL(window.location.href);
+      cleanUrl.searchParams.delete("onboarding");
+      cleanUrl.searchParams.delete("source");
+      history.replaceState({}, "", cleanUrl);
+    });
+  }
+}
+
+function artisanOnboardingAction(state) {
+  if (!state.application && !state.artisan) {
+    return {
+      label: "Continue artisan registration",
+      url: "index.html?resume=artisan#join",
+      hint: "Next: add your business, location, plan, and identity details.",
+    };
+  }
+  if (state.identity === "failed") {
+    return {
+      label: "Get verification help",
+      url: "mailto:verification@fixam9ja.com?subject=FixAm%209ja%20identity%20verification%20help",
+      hint: "Your existing application is saved. Support can help without creating a duplicate application.",
+    };
+  }
+  if (state.identity !== "verified") {
+    return {
+      label: "Refresh verification status",
+      url: "account.html?onboarding=artisan&source=resume",
+      hint: "Your application is saved. You do not need to submit or pay for another identity check.",
+    };
+  }
+  if (!state.artisan) {
+    return {
+      label: "Refresh profile status",
+      url: "account.html?onboarding=artisan&source=resume",
+      hint: "Your identity passed. FixAm 9ja is connecting your artisan profile.",
+    };
+  }
+  if (!state.hasPhoto) {
+    return {
+      label: "Add public profile photograph",
+      url: "#profilePhotoCard",
+      hint: "Use a clear, front-facing photograph that customers can recognise.",
+    };
+  }
+  if (!state.hasMembership) {
+    const url = new URL("billing.html", window.location.href);
+    if (state.application?.application_code) url.searchParams.set("application", state.application.application_code);
+    url.searchParams.set("plan", state.application?.subscription_plan || state.application?.preferred_plan || state.artisan?.subscription_plan || "monthly");
+    return {
+      label: "Choose payment and activate membership",
+      url: url.href,
+      hint: "Paystack will show the payment methods available for your selected plan.",
+    };
+  }
+  return {
+    label: "View the artisan marketplace",
+    url: "index.html#marketplace",
+    hint: "Setup complete. Keep your profile photograph, availability, and portfolio up to date.",
+  };
 }
 
 function renderProfilePhoto(artisan) {
@@ -1034,6 +1262,7 @@ function setSignedOut() {
   currentUser = null;
   currentProfile = null;
   ownedArtisan = null;
+  if (artisanOnboardingGuide) artisanOnboardingGuide.hidden = true;
   renderProfilePhoto(null);
 }
 
@@ -1110,8 +1339,13 @@ function phoneKey(value) {
   return digits.slice(-10);
 }
 
-function accountRedirectUrl() {
-  return productionAccountUrl;
+function accountRedirectUrl(role = "customer", source = "account") {
+  const url = new URL(productionAccountUrl);
+  if (role === "artisan") {
+    url.searchParams.set("onboarding", "artisan");
+    url.searchParams.set("source", source);
+  }
+  return url.href;
 }
 
 function safePublicImageUrl(value) {

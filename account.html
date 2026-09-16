@@ -8,7 +8,7 @@
     <link rel="icon" href="fixam-logo.jpg" />
     <link rel="manifest" href="manifest.webmanifest" />
     <meta name="theme-color" content="#064c48" />
-    <link rel="stylesheet" href="account.css?v=20260915-google-brand" />
+    <link rel="stylesheet" href="account.css?v=20260916-onboarding-guide" />
     <link rel="stylesheet" href="help-widget.css?v=20260815-app-ready" />
   </head>
   <body>
@@ -122,6 +122,22 @@
         </form>
 
         <p class="form-note" id="dashboardNote">Loading account...</p>
+
+        <section class="artisan-onboarding-guide" id="artisanOnboardingGuide" hidden aria-live="polite" tabindex="-1">
+          <div class="onboarding-guide-heading">
+            <div>
+              <p class="eyebrow">Artisan setup</p>
+              <h3 id="artisanOnboardingWelcome">Welcome to FixAm 9ja</h3>
+              <p id="artisanOnboardingSummary">Your account is connected. Follow the steps below to publish your artisan profile.</p>
+            </div>
+            <span class="onboarding-progress" id="artisanOnboardingProgress">1 of 5 complete</span>
+          </div>
+          <ol class="onboarding-checklist" id="artisanOnboardingChecklist"></ol>
+          <div class="onboarding-guide-action">
+            <a class="primary-action" id="artisanOnboardingContinue" href="index.html?resume=artisan#join">Continue artisan registration</a>
+            <small id="artisanOnboardingHint">Your progress is saved securely to your FixAm 9ja account.</small>
+          </div>
+        </section>
 
         <section class="account-card" id="artisanNextStep" hidden aria-live="polite"></section>
 
@@ -266,7 +282,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="location-data.js?v=20260814-map"></script>
     <script src="supabase-config.js?v=20260814"></script>
-    <script src="account.js?v=20260915-onboarding"></script>
+    <script src="account.js?v=20260916-onboarding-guide"></script>
     <script src="help-widget.js?v=20260823-mailboxes"></script>
   </body>
 </html>

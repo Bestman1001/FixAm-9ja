@@ -32,6 +32,18 @@ test('verified artisan adds a public photograph before payment',()=>{
  assert.match(c.artisanNextStep.innerHTML,/billing.html\?application=F9-A-123&plan=biannual/);
  assert.match(c.artisanNextStep.innerHTML,/Continue to subscription/);
 });
+test('artisan onboarding progress is derived from saved application, verification, photo, and membership records',()=>{
+ const start=account.indexOf('function artisanOnboardingState(');
+ const end=account.indexOf('function renderArtisanOnboardingGuide(');
+ const c={safePublicImageUrl:value=>value || ''};
+ vm.createContext(c); vm.runInContext(account.slice(start,end),c);
+ const application={application_code:'F9-A-123',identity_verification_status:'verified',subscription_status:'pending'};
+ const artisan={identity_verification_status:'verified',profile_image_url:'https://cdn.example.com/photo.jpg',subscription_status:'pending'};
+ assert.deepEqual([...c.artisanOnboardingState([],[]).complete],[true,false,false,false,false]);
+ assert.deepEqual([...c.artisanOnboardingState([application],[artisan]).complete],[true,true,true,true,false]);
+ artisan.subscription_status='active';
+ assert.deepEqual([...c.artisanOnboardingState([application],[artisan]).complete],[true,true,true,true,true]);
+});
 test('QoreID success keeps subscription action; close cannot overwrite it and next attempt uses its own application',async()=>{
  const handlers={}; const messages=[]; const sdk={on:(event,cb)=>handlers[event]=cb,start:async()=>{}};
  const c={setJoinStatus:(...args)=>messages.push(args),enterQoreIdMode(){},exitQoreIdMode(){},loadQoreIdSdk:async()=>sdk,splitFullName:()=>({first:'Test',last:'User'}),normalizeNigerianPhone:s=>s};

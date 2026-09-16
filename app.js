@@ -225,6 +225,7 @@ let showAllServices = false;
 let joinStep = 1;
 let joinOtpRequestedFor = "";
 const googleJoinIntentKey = "fixam9ja.googleJoinIntent";
+const artisanOnboardingIntentKey = "fixam9ja.artisanOnboardingIntent";
 
 const supabaseSettings = window.FIXAM_SUPABASE || {};
 const supabaseClient =
@@ -588,6 +589,7 @@ joinGoogleButton.addEventListener("click", async () => {
     fullName: document.querySelector("#joinName").value.trim(),
     phone: document.querySelector("#joinPhone").value.trim(),
   }));
+  rememberArtisanOnboarding("google");
   joinGoogleButton.disabled = true;
   setJoinStatus("Opening Google sign-in...", "");
   const { error } = await supabaseClient.auth.signInWithOAuth({
@@ -614,30 +616,24 @@ async function restoreGoogleJoin() {
   try { intent = JSON.parse(sessionStorage.getItem(googleJoinIntentKey) || "{}"); } catch (_error) { intent = {}; }
   const fullName = intent.fullName || user.user_metadata?.full_name || user.user_metadata?.name || "";
   const phone = intent.phone || user.user_metadata?.phone || "";
-  document.querySelector("#joinName").value = fullName;
-  document.querySelector("#joinEmail").value = user.email;
-  document.querySelector("#joinPhone").value = phone;
   try {
     await saveInlineArtisanProfile(user, {
       fullName,
       email: user.email.toLowerCase(),
       phone: normalizeNigerianPhone(phone),
     });
+    rememberArtisanOnboarding("google");
     sessionStorage.removeItem(googleJoinIntentKey);
-    const cleanUrl = new URL(window.location.href);
-    cleanUrl.searchParams.delete("auth");
-    history.replaceState({}, "", cleanUrl);
-    showJoinStep(1);
-    document.querySelector("#join").scrollIntoView({ block: "start" });
-    setJoinStatus("Google account connected. Add your phone number if needed, then continue.", "success");
+    window.location.replace(new URL("account.html?onboarding=artisan&source=google", window.location.origin).href);
   } catch (profileError) {
     setJoinStatus(profileError.message || "The artisan account could not be prepared.", "error");
   }
 }
 
 function googleJoinRedirectUrl() {
-  const url = new URL("/", window.location.origin);
-  url.searchParams.set("auth", "google");
+  const url = new URL("/account.html", window.location.origin);
+  url.searchParams.set("onboarding", "artisan");
+  url.searchParams.set("source", "google");
   return url.href;
 }
 
@@ -665,6 +661,7 @@ async function ensureInlineArtisanSession() {
       return false;
     }
     joinOtpRequestedFor = "";
+    rememberArtisanOnboarding("email");
     joinOtpInput.value = "";
     joinOtpInput.required = false;
     setJoinStatus("Artisan account confirmed. Continue with your business details.", "success");
@@ -721,6 +718,7 @@ async function ensureInlineArtisanSession() {
     return false;
   }
   joinOtpRequestedFor = "";
+  rememberArtisanOnboarding("email");
   joinOtpInput.value = "";
   joinOtpInput.required = false;
   setJoinStatus("Email verified and artisan account created. Continue with your business details.", "success");
@@ -740,6 +738,58 @@ async function saveInlineArtisanProfile(user, { fullName, email, phone }) {
     { onConflict: "user_id" },
   );
   if (error) throw new Error(`Artisan profile could not be saved: ${error.message}`);
+}
+
+function rememberArtisanOnboarding(source = "account") {
+  try {
+    localStorage.setItem(artisanOnboardingIntentKey, JSON.stringify({
+      active: true,
+      source,
+      updatedAt: new Date().toISOString(),
+    }));
+  } catch (_error) {
+    // Supabase remains the source of truth if browser storage is unavailable.
+  }
+}
+
+async function resumeArtisanOnboarding() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("resume") !== "artisan" || !supabaseClient) return;
+
+  const { data } = await supabaseClient.auth.getSession();
+  const user = data.session?.user;
+  if (!user) {
+    showJoinStep(1);
+    document.querySelector("#join").scrollIntoView({ block: "start" });
+    setJoinStatus("Sign in with Google or request an email code to continue your saved artisan setup.", "");
+    return;
+  }
+
+  const { data: profile } = await supabaseClient
+    .from("user_profiles")
+    .select("full_name, email, phone")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  const fullName = profile?.full_name || user.user_metadata?.full_name || user.user_metadata?.name || "";
+  const email = profile?.email || user.email || "";
+  const phone = profile?.phone || user.user_metadata?.phone || "";
+  document.querySelector("#joinName").value = fullName;
+  document.querySelector("#joinEmail").value = email;
+  document.querySelector("#joinPhone").value = phone;
+  rememberArtisanOnboarding("resume");
+
+  const canContinue = Boolean(fullName && email && /^\+234\d{10}$/.test(normalizeNigerianPhone(phone)));
+  showJoinStep(canContinue ? 2 : 1);
+  document.querySelector("#join").scrollIntoView({ block: "start" });
+  setJoinStatus(
+    canContinue
+      ? "Welcome back. Your account details are saved; continue with your business and location."
+      : "Your account is connected. Add the missing account details, then continue.",
+    "success",
+  );
+  const cleanUrl = new URL(window.location.href);
+  cleanUrl.searchParams.delete("resume");
+  history.replaceState({}, "", cleanUrl);
 }
 
 function renderMap(matches) {
@@ -1125,6 +1175,7 @@ joinForm.addEventListener("submit", async (event) => {
     return;
   }
 
+  rememberArtisanOnboarding("application");
   setJoinStatus("Application received. Preparing the secure QoreID identity check...", "");
   const verificationResult = await verifyNinForApplication({
     applicationCode,
@@ -1805,6 +1856,7 @@ syncJoinAreas();
 render();
 initializeDirectory();
 restoreGoogleJoin();
+resumeArtisanOnboarding();
 
 async function initializeDirectory() {
   await loadServiceCategories();
