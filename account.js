@@ -34,7 +34,14 @@ const artisanOnboardingProgress = document.querySelector("#artisanOnboardingProg
 const artisanOnboardingChecklist = document.querySelector("#artisanOnboardingChecklist");
 const artisanOnboardingContinue = document.querySelector("#artisanOnboardingContinue");
 const artisanOnboardingHint = document.querySelector("#artisanOnboardingHint");
+const artisanLiveActions = document.querySelector("#artisanLiveActions");
 const artisanProfile = document.querySelector("#artisanProfile");
+const artisanProfileEditor = document.querySelector("#artisanProfileEditor");
+const profilePhotoEditor = document.querySelector("#profilePhotoEditor");
+const profilePhotoEditorSummary = document.querySelector("#profilePhotoEditorSummary");
+const profilePhotoDescription = document.querySelector("#profilePhotoDescription");
+const accountRoleBadge = document.querySelector("#accountRoleBadge");
+const accountRoleSummary = document.querySelector("#accountRoleSummary");
 const mediaList = document.querySelector("#mediaList");
 const notificationList = document.querySelector("#notificationList");
 const notificationBadge = document.querySelector("#notificationBadge");
@@ -215,7 +222,7 @@ profileForm.addEventListener("submit", async (event) => {
     phone: document.querySelector("#profilePhone").value.trim(),
     role: selectedRole,
   });
-  await loadDashboard();
+  await loadDashboard({ message: "Personal details saved.", type: "success" });
 });
 
 artisanProfileForm.addEventListener("submit", async (event) => {
@@ -327,7 +334,10 @@ portfolioUploadButton.addEventListener("click", async () => {
     result.error ? `Upload needs retry: ${result.error}` : `${result.count} portfolio file${result.count === 1 ? "" : "s"} uploaded.`,
     result.error ? "error" : "success",
   );
-  await loadDashboard();
+  await loadDashboard({
+    message: result.error ? `Upload needs retry: ${result.error}` : "Portfolio updated.",
+    type: result.error ? "error" : "success",
+  });
 });
 
 profilePhotoUploadButton.addEventListener("click", async () => {
@@ -507,7 +517,7 @@ async function loadDashboard(note = null) {
   if (currentProfile?.account_status === "restricted") {
     setNote(dashboardNote, `Account access is restricted. ${currentProfile.status_reason || "Contact support@fixam9ja.com."}`, "error");
   } else {
-    setNote(dashboardNote, note?.message || "Account loaded.", note?.type || "success");
+    setNote(dashboardNote, note?.message || "", note?.type || "");
   }
 }
 
@@ -623,6 +633,9 @@ function fillProfileForm() {
   document.querySelector("#profileName").value = currentProfile?.full_name || "";
   document.querySelector("#profilePhone").value = currentProfile?.phone || "";
   document.querySelector("#profileRole").value = currentProfile?.role || "customer";
+  const roleLabel = currentProfile?.role === "artisan" ? "Artisan" : "Customer";
+  if (accountRoleBadge) accountRoleBadge.textContent = roleLabel;
+  if (accountRoleSummary) accountRoleSummary.textContent = `${roleLabel} account · ${currentProfile?.email || currentUser?.email || "Signed in"}`;
   document.querySelector("#dashboardTitle").textContent = `Welcome, ${currentProfile?.full_name || "FixAm user"}`;
 }
 
@@ -991,6 +1004,9 @@ function renderArtisanOnboardingGuide(applications, artisans) {
   const firstName = String(currentProfile?.full_name || "Artisan").trim().split(/\s+/)[0];
   const request = onboardingRequest();
   const isComplete = completedCount === state.complete.length;
+  artisanOnboardingGuide.classList.toggle("is-live", isComplete);
+  artisanOnboardingChecklist.hidden = isComplete;
+  if (artisanLiveActions) artisanLiveActions.hidden = !isComplete;
   if (!isComplete) rememberArtisanOnboarding(request.source);
   else clearArtisanOnboardingIntent();
 
@@ -1000,12 +1016,12 @@ function renderArtisanOnboardingGuide(applications, artisans) {
       ? "Your email is verified and your account is connected."
       : "Your FixAm 9ja account is connected.";
   artisanOnboardingWelcome.textContent = isComplete
-    ? `Your artisan setup is complete, ${firstName}`
+    ? `Your artisan profile is live, ${firstName}`
     : `Welcome, ${firstName} — let’s finish your artisan profile`;
   artisanOnboardingSummary.textContent = isComplete
-    ? "Your identity, public photograph, and membership are ready. Customers can now find your active profile."
+    ? "Customers can now find and contact you. Use this workspace to manage quote leads, availability, photographs, and membership."
     : `${sourceLabel} Continue from the highlighted step below; you will not need to repeat completed steps.`;
-  artisanOnboardingProgress.textContent = `${completedCount} of ${state.complete.length} complete`;
+  artisanOnboardingProgress.textContent = isComplete ? "Live" : `${completedCount} of ${state.complete.length} complete`;
 
   const steps = [
     ["Account connected", "Your secure FixAm 9ja sign-in is ready."],
@@ -1110,9 +1126,9 @@ function artisanOnboardingAction(state) {
     };
   }
   return {
-    label: "View the artisan marketplace",
+    label: "View artisan marketplace",
     url: "index.html#marketplace",
-    hint: "Setup complete. Keep your profile photograph, availability, and portfolio up to date.",
+    hint: "Your listing is active. New customer requests will appear under Quote leads below.",
   };
 }
 
@@ -1123,6 +1139,14 @@ function renderProfilePhoto(artisan) {
     ? `<img src="${escapeHtml(imageUrl)}" alt="Your public artisan profile photograph" />`
     : "<span>Add your photograph</span>";
   profilePhotoUploadButton.disabled = !artisan;
+  if (profilePhotoEditor) profilePhotoEditor.open = !imageUrl;
+  if (profilePhotoEditorSummary) profilePhotoEditorSummary.textContent = imageUrl ? "Change photograph" : "Add photograph";
+  if (profilePhotoDescription) {
+    profilePhotoDescription.textContent = imageUrl
+      ? "This is the photograph customers see on your live artisan profile."
+      : "Add a clear, front-facing photograph that customers can recognise.";
+  }
+  document.querySelector("#profilePhotoCard")?.classList.toggle("has-saved-photo", Boolean(imageUrl));
 }
 
 function renderArtisanProfile(items, applications = []) {
@@ -1133,10 +1157,11 @@ function renderArtisanProfile(items, applications = []) {
             <article class="connected-profile">
               <strong>${escapeHtml(item.business_name)}</strong>
               <small>${escapeHtml(item.category)} in ${escapeHtml([item.town, item.lga || item.area].filter(Boolean).join(", "))}, ${escapeHtml(item.state)}</small>
-              <small>${escapeHtml(item.profile_status)} - ${escapeHtml(item.plan)} - ${escapeHtml(item.verification_status)}</small>
-              <small>NIN ${escapeHtml(item.identity_verification_status || "pending")} - Subscription ${escapeHtml(
-                item.subscription_status || "pending",
-              )} - ${formatNaira(item.subscription_amount)}</small>
+              <div class="profile-status-list">
+                <span>${String(item.profile_status || "pending").toLowerCase() === "active" ? "Live in marketplace" : escapeHtml(item.profile_status || "Profile pending")}</span>
+                <span>NIN ${escapeHtml(item.identity_verification_status || "pending")}</span>
+                <span>Membership ${escapeHtml(item.subscription_status || "pending")}</span>
+              </div>
               <small>${escapeHtml(item.availability || "Taking scheduled jobs")} - ${item.service_radius || 10} mile radius</small>
               <a href="billing.html">Manage subscription & payments</a>
             </article>
@@ -1146,7 +1171,7 @@ function renderArtisanProfile(items, applications = []) {
     : `<article><span>${applications.length ? "Your application is linked to this account. Your artisan profile will appear after verification is confirmed." : "No artisan profile linked yet. Start an application above, or claim an existing listed profile."}</span></article>`;
 
   claimProfileButton.hidden = items.length > 0 || applications.length > 0;
-  artisanProfileForm.hidden = !items.length;
+  if (artisanProfileEditor) artisanProfileEditor.hidden = !items.length;
 }
 
 function fillArtisanProfileForm() {
@@ -1295,6 +1320,7 @@ function setSignedOut() {
 
 function setNote(element, message, type) {
   element.textContent = message;
+  element.hidden = !message;
   element.classList.remove("success-note", "error-note");
   if (type === "success") element.classList.add("success-note");
   if (type === "error") element.classList.add("error-note");

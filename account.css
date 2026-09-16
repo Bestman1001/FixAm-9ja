@@ -317,19 +317,70 @@ textarea:focus {
 }
 
 .profile-summary-form {
-  grid-template-columns: 1fr 1fr auto;
+  grid-template-columns: 1fr 1fr;
   align-items: end;
   gap: 12px;
+  margin-top: 14px;
 }
 
 .profile-summary-form .primary-action {
-  grid-column: 2 / 4;
+  grid-column: 1 / -1;
   min-width: 160px;
   box-shadow: none;
 }
 
-.profile-summary-form label:nth-child(3) {
-  grid-column: 1 / 2;
+.account-settings {
+  margin-bottom: 14px;
+  padding: 0 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.account-settings > summary,
+.account-disclosure > summary,
+.account-editor > summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.account-settings > summary::-webkit-details-marker,
+.account-disclosure > summary::-webkit-details-marker,
+.account-editor > summary::-webkit-details-marker {
+  display: none;
+}
+
+.account-settings > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 0;
+}
+
+.account-settings > summary span:first-child {
+  display: grid;
+  gap: 3px;
+}
+
+.account-settings > summary small,
+.account-disclosure > summary small {
+  color: var(--muted);
+}
+
+.account-settings[open] {
+  padding-bottom: 16px;
+}
+
+.account-role-badge {
+  flex: 0 0 auto;
+  padding: 6px 10px;
+  color: var(--deep);
+  background: #dff5e9;
+  border: 1px solid rgba(11, 143, 100, 0.28);
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 900;
 }
 
 .form-note {
@@ -408,6 +459,16 @@ textarea:focus {
   outline: none;
 }
 
+.artisan-onboarding-guide.is-live {
+  gap: 14px;
+  padding: clamp(16px, 2.5vw, 22px);
+  background: linear-gradient(135deg, #e9faf2 0%, #ffffff 78%);
+}
+
+.artisan-onboarding-guide.is-live .onboarding-guide-heading h3 {
+  font-size: clamp(1.35rem, 2.7vw, 1.75rem);
+}
+
 .onboarding-guide-heading {
   display: flex;
   align-items: flex-start;
@@ -445,6 +506,10 @@ textarea:focus {
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+.onboarding-checklist[hidden] {
+  display: none;
 }
 
 .onboarding-checklist li {
@@ -530,12 +595,57 @@ textarea:focus {
   flex: 0 0 auto;
 }
 
+.artisan-live-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.artisan-live-actions[hidden] {
+  display: none;
+}
+
+.artisan-live-actions .secondary-action {
+  min-height: 42px;
+  padding: 9px 12px;
+  box-shadow: none;
+}
+
 .account-card {
   display: grid;
   gap: 12px;
   align-content: start;
   padding: 16px;
   box-shadow: none;
+}
+
+.account-disclosure > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.account-disclosure > summary span {
+  display: grid;
+  gap: 3px;
+}
+
+.account-disclosure > summary::after,
+.account-editor > summary::after {
+  content: "+";
+  color: var(--deep);
+  font-size: 1.35rem;
+  font-weight: 900;
+}
+
+.account-disclosure[open] > summary::after,
+.account-editor[open] > summary::after {
+  content: "−";
+}
+
+.account-disclosure[open] > .record-list {
+  margin-top: 12px;
 }
 
 .card-title-row {
@@ -623,6 +733,26 @@ textarea:focus {
   width: 100%;
 }
 
+.account-editor {
+  border-top: 1px solid var(--line);
+}
+
+.account-editor > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0 2px;
+  color: var(--deep);
+  font-weight: 900;
+}
+
+.account-editor-body {
+  display: grid;
+  gap: 12px;
+  padding-top: 12px;
+}
+
 .connected-profile {
   border-color: rgba(11, 143, 100, 0.3) !important;
   background: #eef8f3 !important;
@@ -630,6 +760,23 @@ textarea:focus {
 
 .connected-profile strong {
   color: var(--deep);
+}
+
+.profile-status-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.profile-status-list span {
+  padding: 5px 8px;
+  color: var(--deep);
+  background: #dff5e9;
+  border: 1px solid rgba(11, 143, 100, 0.22);
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 900;
 }
 
 .profile-photo-preview {
@@ -654,6 +801,25 @@ textarea:focus {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+#profilePhotoCard.has-saved-photo {
+  grid-template-columns: 112px minmax(0, 1fr);
+  align-items: start;
+}
+
+#profilePhotoCard.has-saved-photo h3,
+#profilePhotoCard.has-saved-photo .account-editor {
+  grid-column: 1 / -1;
+}
+
+#profilePhotoCard.has-saved-photo .profile-photo-preview {
+  width: 112px;
+}
+
+#profilePhotoCard.has-saved-photo > p {
+  align-self: center;
+  margin: 0;
 }
 
 .quote-dialog {
@@ -791,8 +957,7 @@ textarea:focus {
     grid-template-columns: 1fr;
   }
 
-  .profile-summary-form .primary-action,
-  .profile-summary-form label:nth-child(3) {
+  .profile-summary-form .primary-action {
     grid-column: 1 / -1;
   }
 }
@@ -831,6 +996,17 @@ textarea:focus {
     align-items: stretch;
     flex-direction: column;
     grid-template-columns: 1fr;
+  }
+
+  .onboarding-guide-heading,
+  .account-settings > summary {
+    align-items: flex-start;
+  }
+
+  .artisan-live-actions,
+  .artisan-live-actions .secondary-action,
+  .onboarding-guide-action .primary-action {
+    width: 100%;
   }
 
   .account-shell {

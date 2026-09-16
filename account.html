@@ -8,7 +8,7 @@
     <link rel="icon" href="fixam-logo.jpg" />
     <link rel="manifest" href="manifest.webmanifest" />
     <meta name="theme-color" content="#064c48" />
-    <link rel="stylesheet" href="account.css?v=20260916-onboarding-guide" />
+    <link rel="stylesheet" href="account.css?v=20260916-artisan-dashboard" />
     <link rel="stylesheet" href="help-widget.css?v=20260815-app-ready" />
   </head>
   <body>
@@ -102,24 +102,27 @@
           <button class="secondary-action" type="button" id="refreshButton">Refresh</button>
         </div>
 
-        <form class="account-form compact profile-summary-form" id="profileForm">
-          <label>
-            <span>Full name</span>
-            <input id="profileName" type="text" required />
-          </label>
-          <label>
-            <span>Phone</span>
-            <input id="profilePhone" type="tel" />
-          </label>
-          <label>
-            <span>Role</span>
-            <select id="profileRole">
-              <option value="customer">Customer</option>
-              <option value="artisan">Artisan</option>
-            </select>
-          </label>
-          <button class="primary-action" type="submit">Save profile</button>
-        </form>
+        <details class="account-settings" id="accountSettings">
+          <summary>
+            <span>
+              <strong>Personal account details</strong>
+              <small id="accountRoleSummary">Signed in account</small>
+            </span>
+            <span class="account-role-badge" id="accountRoleBadge">Customer</span>
+          </summary>
+          <form class="account-form compact profile-summary-form" id="profileForm">
+            <label>
+              <span>Full name</span>
+              <input id="profileName" type="text" required />
+            </label>
+            <label>
+              <span>Phone</span>
+              <input id="profilePhone" type="tel" />
+            </label>
+            <input id="profileRole" type="hidden" value="customer" />
+            <button class="primary-action" type="submit">Save personal details</button>
+          </form>
+        </details>
 
         <p class="form-note" id="dashboardNote">Loading account...</p>
 
@@ -137,6 +140,11 @@
             <a class="primary-action" id="artisanOnboardingContinue" href="index.html?resume=artisan#join">Continue artisan registration</a>
             <small id="artisanOnboardingHint">Your progress is saved securely to your FixAm 9ja account.</small>
           </div>
+          <nav class="artisan-live-actions" id="artisanLiveActions" aria-label="Artisan profile actions" hidden>
+            <a class="secondary-action" href="#artisanProfileCard">Edit business profile</a>
+            <a class="secondary-action" href="billing.html">Manage membership</a>
+            <a class="secondary-action" href="#portfolioCard">Update portfolio</a>
+          </nav>
         </section>
 
         <section class="account-card" id="artisanNextStep" hidden aria-live="polite"></section>
@@ -153,63 +161,73 @@
             </div>
             <div class="record-list" id="quoteLeadList"></div>
           </section>
-          <section class="account-card" data-account-view="artisan">
-            <h3>Artisan applications</h3>
+          <details class="account-card account-disclosure" id="artisanApplicationsCard" data-account-view="artisan">
+            <summary>
+              <span><strong>Registration record</strong><small>Your completed application and verification record</small></span>
+            </summary>
             <div class="record-list" id="applicationList"></div>
-          </section>
+          </details>
           <section class="account-card" id="profilePhotoCard" data-account-view="artisan">
-            <h3>Your public profile photograph</h3>
+            <h3>Public profile photograph</h3>
             <div class="profile-photo-preview" id="profilePhotoPreview"><span>Add your photograph</span></div>
-            <p>Take a clear front-facing photograph. Customers will see it on your public artisan profile.</p>
-            <label>
-              <span>Take or choose a photograph</span>
-              <input id="profilePhoto" type="file" accept="image/*" capture="user" />
-            </label>
-            <button class="primary-action" type="button" id="profilePhotoUploadButton">Save public profile photograph</button>
-            <p class="form-note">A profile photograph is required before your verified, paid listing can appear in the marketplace.</p>
+            <p id="profilePhotoDescription">Take a clear front-facing photograph. Customers will see it on your public artisan profile.</p>
+            <details class="account-editor" id="profilePhotoEditor">
+              <summary id="profilePhotoEditorSummary">Add photograph</summary>
+              <div class="account-editor-body">
+                <label>
+                  <span>Take or choose a photograph</span>
+                  <input id="profilePhoto" type="file" accept="image/*" capture="user" />
+                </label>
+                <button class="primary-action" type="button" id="profilePhotoUploadButton">Save public profile photograph</button>
+                <p class="form-note">A clear profile photograph is required before your verified, paid listing can appear in the marketplace.</p>
+              </div>
+            </details>
           </section>
-          <section class="account-card" data-account-view="artisan">
-            <h3>Artisan profile</h3>
+          <section class="account-card" id="artisanProfileCard" data-account-view="artisan">
+            <h3>Business profile</h3>
             <div class="record-list" id="artisanProfile"></div>
             <button class="secondary-action" type="button" id="claimProfileButton">Claim matching phone profile</button>
-            <form class="profile-tools" id="artisanProfileForm" hidden>
-              <label>
-                <span>Business name</span>
-                <input id="artisanBusinessName" type="text" />
-              </label>
-              <label>
-                <span>Trade</span>
-                <input id="artisanCategory" type="text" />
-              </label>
-              <label>
-                <span>LGA / Area Council</span>
-                <select id="artisanArea"></select>
-              </label>
-              <label>
-                <span>Town / neighbourhood</span>
-                <input id="artisanTown" type="text" placeholder="e.g. Gwarinpa" />
-              </label>
-              <label>
-                <span>Availability</span>
-                <select id="artisanAvailability">
-                  <option value="Taking jobs today">Taking jobs today</option>
-                  <option value="Taking scheduled jobs">Taking scheduled jobs</option>
-                  <option value="Busy this week">Busy this week</option>
-                  <option value="Emergency jobs only">Emergency jobs only</option>
-                </select>
-              </label>
-              <label>
-                <span>Service radius</span>
-                <input id="artisanServiceRadius" type="number" min="1" max="100" step="1" />
-              </label>
-              <label>
-                <span>About your work</span>
-                <textarea id="artisanBio" rows="4"></textarea>
-              </label>
-              <button class="primary-action" type="submit">Save artisan profile</button>
-            </form>
+            <details class="account-editor" id="artisanProfileEditor" hidden>
+              <summary>Edit business profile</summary>
+              <form class="profile-tools" id="artisanProfileForm">
+                <label>
+                  <span>Business name</span>
+                  <input id="artisanBusinessName" type="text" />
+                </label>
+                <label>
+                  <span>Trade</span>
+                  <input id="artisanCategory" type="text" />
+                </label>
+                <label>
+                  <span>LGA / Area Council</span>
+                  <select id="artisanArea"></select>
+                </label>
+                <label>
+                  <span>Town / neighbourhood</span>
+                  <input id="artisanTown" type="text" placeholder="e.g. Gwarinpa" />
+                </label>
+                <label>
+                  <span>Availability</span>
+                  <select id="artisanAvailability">
+                    <option value="Taking jobs today">Taking jobs today</option>
+                    <option value="Taking scheduled jobs">Taking scheduled jobs</option>
+                    <option value="Busy this week">Busy this week</option>
+                    <option value="Emergency jobs only">Emergency jobs only</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Service radius</span>
+                  <input id="artisanServiceRadius" type="number" min="1" max="100" step="1" />
+                </label>
+                <label>
+                  <span>About your work</span>
+                  <textarea id="artisanBio" rows="4"></textarea>
+                </label>
+                <button class="primary-action" type="submit">Save business profile</button>
+              </form>
+            </details>
           </section>
-          <section class="account-card" data-account-view="artisan">
+          <section class="account-card" id="portfolioCard" data-account-view="artisan">
             <h3>Portfolio uploads</h3>
             <label>
               <span>Images/videos</span>
@@ -282,7 +300,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="location-data.js?v=20260814-map"></script>
     <script src="supabase-config.js?v=20260814"></script>
-    <script src="account.js?v=20260916-verification-handoff"></script>
+    <script src="account.js?v=20260916-artisan-dashboard"></script>
     <script src="help-widget.js?v=20260823-mailboxes"></script>
   </body>
 </html>

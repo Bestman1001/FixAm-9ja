@@ -5,7 +5,7 @@ import vm from 'node:vm';
 const account = fs.readFileSync('account.js','utf8');
 const app = fs.readFileSync('app.js','utf8');
 function accountView() {
- const context={artisanNextStep:{},artisanProfile:{},claimProfileButton:{},artisanProfileForm:{},currentProfile:{role:'artisan'},window:{location:{href:'https://www.fixam9ja.com/account'}},URL,escapeHtml:s=>String(s),formatNaira:String,safePublicImageUrl:value=>value || ''};
+ const context={artisanNextStep:{},artisanProfile:{},artisanProfileEditor:{},claimProfileButton:{},artisanProfileForm:{},currentProfile:{role:'artisan'},window:{location:{href:'https://www.fixam9ja.com/account'}},URL,escapeHtml:s=>String(s),formatNaira:String,safePublicImageUrl:value=>value || ''};
  vm.createContext(context);
  vm.runInContext(account.slice(account.indexOf('function renderArtisanNextStep('),account.indexOf('function fillArtisanProfileForm(')),context);
  return context;

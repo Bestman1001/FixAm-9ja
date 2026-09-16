@@ -40,6 +40,20 @@ test('artisan authentication lands on a guided, resumable account checklist', ()
   assert.match(accountScript, /Confirming your QoreID result/);
 });
 
+test('completed artisans get a live workspace instead of repeated onboarding controls', () => {
+  assert.match(account, /id="profileRole" type="hidden"/);
+  assert.doesNotMatch(account, /<select id="profileRole">/);
+  assert.match(account, /id="accountSettings"/);
+  assert.match(account, /id="artisanLiveActions"/);
+  assert.match(account, /id="artisanApplicationsCard"/);
+  assert.match(account, /id="profilePhotoEditor"/);
+  assert.match(account, /id="artisanProfileEditor"/);
+  assert.match(accountScript, /artisanOnboardingChecklist\.hidden = isComplete/);
+  assert.match(accountScript, /artisanLiveActions\.hidden = !isComplete/);
+  assert.match(accountScript, /Your artisan profile is live/);
+  assert.match(accountScript, /View artisan marketplace/);
+});
+
 test('new artisan applications record face-match consent', () => {
   assert.match(homeScript, /face_match_consent:\s*hasNinConsent/);
   assert.match(homeScript, /face_match_consent_at:/);
