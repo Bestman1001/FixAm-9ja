@@ -28,8 +28,8 @@ test('billing migration, permissions, payment idempotency and paid-access lifecy
   await db.query(`insert into auth.users(id,email) values ($1,'artisan@example.com')`, [uid]);
   const app = (await db.query(`insert into artisan_applications(application_code,full_name,trade,state,area,phone,preferred_plan,applicant_user_id,identity_verification_status,work_summary)
     values ('APP-1','Test Artisan','Plumber','Lagos','Ikeja','08012345678','biannual',$1,'verified','Plumbing services') returning id`, [uid])).rows[0].id;
-  const artisan = (await db.query(`insert into artisans(application_id,owner_user_id,business_name,owner_name,phone,category,state,area,lat,lng,verification_status,identity_verification_status,subscription_status)
-    values ($1,$2,'Test Artisan','Test Artisan','08012345678','Plumber','Lagos','Ikeja',6.6,3.3,'verified','verified','pending') returning id`, [app, uid])).rows[0].id;
+  const artisan = (await db.query(`insert into artisans(application_id,owner_user_id,business_name,owner_name,phone,category,state,area,lat,lng,profile_status,verification_status,identity_verification_status,subscription_status)
+    values ($1,$2,'Test Artisan','Test Artisan','08012345678','Plumber','Lagos','Ikeja',6.6,3.3,'draft','verified','verified','pending') returning id`, [app, uid])).rows[0].id;
   const billing = (await db.query(`insert into billing_subscriptions(user_id,application_id,artisan_id,email,plan,amount_kobo,plan_code,reference)
     values ($1,$2,$3,'artisan@example.com','biannual',1200000,'PLN_six','F9-first') returning id`, [uid, app, artisan])).rows[0].id;
   const apply = (ref, amount = 1200000, paid = new Date().toISOString()) => db.query(`select fixam_apply_paystack_payment($1,$2,$3,$4) as expiry`, [billing, ref, amount, paid]);
@@ -37,6 +37,10 @@ test('billing migration, permissions, payment idempotency and paid-access lifecy
   assert.equal((await apply('F9-first')).rows[0].expiry.getTime(), first.getTime(), 'duplicate delivery must not extend access');
   assert.equal((await db.query('select count(*)::int as n from billing_payments')).rows[0].n, 1);
   assert.equal((await db.query('select subscription_status from artisans where id=$1', [artisan])).rows[0].subscription_status, 'active');
+  assert.equal((await db.query('select profile_status from artisans where id=$1', [artisan])).rows[0].profile_status, 'draft', 'payment alone must not publish a profile without its photograph');
+  await db.query(`update artisans set profile_image_url='https://example.com/artisan.jpg' where id=$1`, [artisan]);
+  assert.equal((await db.query('select profile_status from artisans where id=$1', [artisan])).rows[0].profile_status, 'active');
+  assert.equal((await db.query('select status from artisan_applications where id=$1', [app])).rows[0].status, 'listed');
   await assert.rejects(apply('F9-wrong-amount', 1), /Invalid payment/);
   await assert.rejects(apply('F9-future', 1200000, '2099-01-01'), /Invalid payment/);
   const older = new Date(); older.setUTCFullYear(older.getUTCFullYear() - 1);

@@ -159,6 +159,63 @@ drop trigger if exists fixam_verified_onboarding on public.artisan_applications;
 create trigger fixam_verified_onboarding before update on public.artisan_applications
 for each row execute function public.fixam_automate_verified_onboarding();
 
+-- Publish an artisan as soon as every public-listing requirement is present,
+-- regardless of whether the photograph or payment arrived last. Administrative
+-- pauses, suspensions and removals are never overridden by this automation.
+create or replace function public.fixam_publish_completed_artisan()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if new.profile_status = 'draft'
+     and new.verification_status = 'verified'
+     and new.identity_verification_status = 'verified'
+     and new.subscription_status in ('active', 'founding', 'free_trial')
+     and new.profile_image_url is not null
+     and btrim(new.profile_image_url) <> ''
+     and (new.subscription_expires_at is null or new.subscription_expires_at > now()) then
+    new.profile_status := 'active';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists fixam_publish_completed_artisan on public.artisans;
+create trigger fixam_publish_completed_artisan before insert or update on public.artisans
+for each row execute function public.fixam_publish_completed_artisan();
+
+create or replace function public.fixam_mark_published_application()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if new.application_id is not null
+     and new.profile_status = 'active'
+     and new.verification_status = 'verified'
+     and new.identity_verification_status = 'verified'
+     and new.subscription_status in ('active', 'founding', 'free_trial')
+     and new.profile_image_url is not null
+     and btrim(new.profile_image_url) <> ''
+     and (new.subscription_expires_at is null or new.subscription_expires_at > now()) then
+    update public.artisan_applications
+    set status = 'listed'
+    where id = new.application_id and status <> 'rejected';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists fixam_mark_published_application on public.artisans;
+create trigger fixam_mark_published_application after insert or update on public.artisans
+for each row execute function public.fixam_mark_published_application();
+
+-- Repair completed profiles created before the publication trigger existed.
+update public.artisans
+set profile_status = 'active', updated_at = now()
+where profile_status = 'draft'
+  and verification_status = 'verified'
+  and identity_verification_status = 'verified'
+  and subscription_status in ('active', 'founding', 'free_trial')
+  and profile_image_url is not null
+  and btrim(profile_image_url) <> ''
+  and (subscription_expires_at is null or subscription_expires_at > now());
+
 create or replace function public.fixam_audit_row_change()
 returns trigger language plpgsql security definer set search_path = public as $$
 declare row_id text;

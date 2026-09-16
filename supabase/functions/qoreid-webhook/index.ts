@@ -86,7 +86,7 @@ Deno.serve(async (req) => {
       identity_verification_reference: reference,
     };
 
-    if (status === "verified") {
+    if (status === "verified" && !["listed", "rejected"].includes(application.status)) {
       applicationUpdate.status = "approved";
     }
 
@@ -226,6 +226,16 @@ async function upsertVerifiedArtisan(
   reference: string,
   now: string,
 ) {
+  const existingResult = await supabaseAdmin
+    .from("artisans")
+    .select("profile_status")
+    .eq("application_id", application.id)
+    .maybeSingle();
+  if (existingResult.error) throw new Error(existingResult.error.message);
+  const existingStanding = String(existingResult.data?.profile_status || "draft");
+  const profileStatus = ["active", "paused", "suspended", "removed"].includes(existingStanding)
+    ? existingStanding
+    : "draft";
   const lga = application.lga || application.area;
   const coords = coordinatesFor(application.state, lga);
   const subscriptionPlan = normalizeSubscriptionPlan(application.preferred_plan || application.subscription_plan);
@@ -252,7 +262,7 @@ async function upsertVerifiedArtisan(
     lat: coords.lat,
     lng: coords.lng,
     plan: "Verified",
-    profile_status: "active",
+    profile_status: profileStatus,
     verification_status: "verified",
     identity_verification_status: "verified",
     identity_verification_reference: reference,
