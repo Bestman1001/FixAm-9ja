@@ -13,6 +13,7 @@ const artisanProfileForm = document.querySelector("#artisanProfileForm");
 const authNote = document.querySelector("#authNote");
 const dashboardNote = document.querySelector("#dashboardNote");
 const sessionEmail = document.querySelector("#sessionEmail");
+const subscriptionLink = document.querySelector("#subscriptionLink");
 const adminPortalLink = document.querySelector("#adminPortalLink");
 const signOutButton = document.querySelector("#signOutButton");
 const magicLinkButton = document.querySelector("#magicLinkButton");
@@ -1392,6 +1393,7 @@ function fillArtisanProfileForm() {
 function applyAccountRoleView() {
   const role = currentProfile?.role === "artisan" ? "artisan" : "customer";
   document.body.dataset.accountRole = role;
+  if (subscriptionLink) subscriptionLink.hidden = role !== "artisan";
   document.querySelectorAll("[data-account-view]").forEach((section) => {
     section.hidden = section.dataset.accountView !== role;
   });
@@ -1504,6 +1506,7 @@ function setSignedOut() {
   signOutButton.hidden = true;
   document.body.classList.remove("is-signed-in");
   sessionEmail.textContent = "Signed out";
+  if (subscriptionLink) subscriptionLink.hidden = true;
   if (adminPortalLink) adminPortalLink.hidden = true;
   currentUser = null;
   currentProfile = null;
