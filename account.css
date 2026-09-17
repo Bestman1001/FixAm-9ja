@@ -893,6 +893,134 @@ textarea:focus {
   justify-content: flex-end;
 }
 
+.completion-response {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 10px;
+  width: 100%;
+  padding-top: 12px;
+  border-top: 1px solid rgba(11, 143, 100, 0.2);
+}
+
+.completion-response textarea {
+  width: 100%;
+  min-height: 76px;
+}
+
+.quote-negotiation {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  background: #fffdf7;
+  border: 1px solid #e6d5a9;
+  border-radius: 10px;
+}
+
+.quote-negotiation h3 {
+  margin: 2px 0 0;
+}
+
+.section-label {
+  color: #8a6514;
+  font-size: 0.76rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.current-offer {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  background: #fff7dc;
+  border: 1px solid #ead598;
+  border-radius: 8px;
+}
+
+.current-offer > span {
+  color: #71520d;
+  font-size: 0.76rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.current-offer > strong {
+  color: var(--ink);
+  font-size: 1.35rem;
+}
+
+.current-offer p {
+  margin: 0;
+}
+
+.quote-offer-form {
+  display: grid;
+  grid-template-columns: minmax(0, 0.7fr) minmax(0, 1.3fr);
+  gap: 10px;
+  align-items: end;
+}
+
+.quote-offer-form button {
+  grid-column: 1 / -1;
+}
+
+.offer-history-disclosure summary {
+  cursor: pointer;
+  color: var(--deep);
+  font-weight: 850;
+}
+
+.offer-history {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.offer-history article {
+  padding: 10px;
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.offer-history article > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.offer-history p,
+.offer-history small {
+  margin: 5px 0 0;
+  color: var(--muted);
+}
+
+.offer-status {
+  align-self: start;
+  padding: 3px 7px;
+  background: var(--soft);
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.offer-status.is-accepted {
+  color: var(--deep);
+  background: #dff5e9;
+}
+
+.quote-phone-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 8px 10px;
+  color: white;
+  background: var(--deep);
+  border-radius: 8px;
+  font-weight: 900;
+  text-decoration: none;
+}
+
 .quote-detail-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1029,6 +1157,7 @@ textarea:focus {
 
   .quote-dialog-header,
   .quote-actions,
+  .quote-offer-form,
   .quote-detail-grid,
   .quote-media-grid {
     grid-template-columns: 1fr;

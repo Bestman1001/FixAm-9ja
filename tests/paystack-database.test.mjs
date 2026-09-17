@@ -21,7 +21,7 @@ test('billing migration, permissions, payment idempotency and paid-access lifecy
     alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
     alter default privileges in schema public grant usage on sequences to anon, authenticated, service_role;
   `);
-  for (const file of ['schema.sql', 'admin-automation.sql', 'app-readiness.sql', 'qoreid-collection-readiness.sql', 'admin-user-counts.sql', 'paystack-billing.sql', 'paystack-billing.sql']) {
+  for (const file of ['schema.sql', 'admin-automation.sql', 'app-readiness.sql', 'qoreid-collection-readiness.sql', 'quote-negotiation.sql', 'admin-user-counts.sql', 'paystack-billing.sql', 'paystack-billing.sql']) {
     await db.exec(await readFile(new URL(`../supabase/${file}`, import.meta.url), 'utf8'));
   }
   const uid = '00000000-0000-4000-8000-000000000001';

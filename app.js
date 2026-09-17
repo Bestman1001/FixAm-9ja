@@ -1003,6 +1003,7 @@ quoteForm.addEventListener("submit", async (event) => {
     request_code: requestId,
     artisan_id: selectedQuoteArtisan.id,
     artisan_name: selectedQuoteArtisan.name,
+    artisan_phone: selectedQuoteArtisan.phone || null,
     artisan_category: selectedQuoteArtisan.category,
     artisan_state: selectedQuoteArtisan.state,
     artisan_area: selectedQuoteArtisan.area,
@@ -1317,7 +1318,7 @@ async function loadRealArtisans() {
     return;
   }
 
-  const legacyColumns = "id, state, area, category, business_name, profile_image_url, lat, lng, rating, jobs, response_time, plan, subscription_plan, subscription_status, bio, skills, availability, service_radius, completed_jobs, verification_status, verification_checks, portfolio_items, profile_status";
+  const legacyColumns = "id, state, area, category, business_name, phone, profile_image_url, lat, lng, rating, jobs, response_time, plan, subscription_plan, subscription_status, bio, skills, availability, service_radius, completed_jobs, verification_status, verification_checks, portfolio_items, profile_status";
   const fetchArtisans = (columns) => supabaseClient
       .from("artisans")
       .select(columns)
@@ -1348,6 +1349,7 @@ async function loadRealArtisans() {
     town: artisan.town || "",
     category: artisan.category,
     name: artisan.business_name,
+    phone: artisan.phone || "",
     lat: Number(artisan.lat),
     lng: Number(artisan.lng),
     rating: Number(artisan.rating || 4.5),

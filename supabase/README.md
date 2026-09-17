@@ -1,6 +1,6 @@
 # FixAm 9ja Supabase Setup
 
-For a complete environment, follow the migration order in `../APP-READINESS.md`, including `paystack-billing.sql` last. Running `schema.sql` alone does not configure recurring payments or the current account-deletion safeguards. See `../PAYSTACK-SETUP.md` for the Paystack plans, secrets, webhook and Function deployments.
+For a complete environment, follow the migration order in `../APP-READINESS.md`, including `quote-negotiation.sql` before the final Paystack migration. Running `schema.sql` alone does not configure recurring payments, the two-sided quote room, or the current account-deletion safeguards. See `../PAYSTACK-SETUP.md` for the Paystack plans, secrets, webhook and Function deployments.
 
 1. Open your Supabase project.
 2. Go to SQL Editor.
@@ -36,11 +36,22 @@ The public website gets insert access to `quote_requests`, `artisan_applications
 
 ## Review Flow
 
-1. Admin opens `admin.html`.
-2. Admin copies a review link from a quote request after the job is done.
-3. Customer opens the link and submits `review.html`.
-4. Review publishes automatically.
+1. Customer marks the linked quote request completed from `account.html`.
+2. Artisan confirms completion or reports an unresolved issue from the same job room.
+3. Customer opens the review link and submits `review.html`.
+4. Review publishes automatically and returns the customer to their dashboard.
 5. Admin can hide/flag unsafe reviews, or mark an artisan as warning, suspended, or removed.
+
+## Quote + Job Room Flow
+
+Run `quote-negotiation.sql` after `app-readiness.sql`.
+
+1. A signed-in customer requests a quote from an artisan profile.
+2. The linked customer and artisan can open the private job room and call each other using the displayed contact action.
+3. Either party can propose or counter an NGN price; only the other party can accept or decline the pending offer.
+4. The accepted amount is stored on the quote and remains visible to both parties with the offer history.
+5. When the customer marks the job completed, the artisan receives a deep-linked notification and confirms completion or reports an issue.
+6. Only the linked customer and artisan can read the offer history or invoke negotiation and completion RPCs.
 
 ## Accounts + Media Flow
 

@@ -62,7 +62,9 @@ let quoteRecords = new Map();
 const googleAuthIntentKey = "fixam9ja.googleAuthIntent";
 const homeGoogleJoinIntentKey = "fixam9ja.googleJoinIntent";
 const artisanOnboardingIntentKey = "fixam9ja.artisanOnboardingIntent";
+const initialReviewPublished = new URL(window.location.href).searchParams.get("review") === "published";
 let onboardingArrivalHandled = false;
+let quoteArrivalHandled = false;
 let verificationRefreshTimer = null;
 let verificationRefreshCount = 0;
 
@@ -207,6 +209,9 @@ quoteLeadList.addEventListener("click", handleQuoteClick);
 quoteList.addEventListener("keydown", handleQuoteKeydown);
 quoteLeadList.addEventListener("keydown", handleQuoteKeydown);
 quoteDialogBody.addEventListener("click", handleQuoteAction);
+quoteDialogBody.addEventListener("click", handleQuoteOfferResponse);
+quoteDialogBody.addEventListener("click", handleQuoteCompletionResponse);
+quoteDialogBody.addEventListener("submit", handleQuoteOfferSubmit);
 
 profileForm.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -445,7 +450,7 @@ async function loadDashboard(note = null) {
     supabaseClient
       .from("quote_requests")
       .select(
-        "id, request_code, review_token, artisan_id, artisan_name, artisan_category, artisan_state, artisan_area, job_location, urgency, job_details, status, media_count, created_at",
+        "id, request_code, review_token, artisan_id, artisan_name, artisan_phone, artisan_category, artisan_state, artisan_area, job_location, urgency, job_details, status, media_count, agreed_amount, customer_completed_at, artisan_completion_status, artisan_completion_note, artisan_completion_responded_at, created_at",
       )
       .eq("customer_user_id", currentUser.id)
       .order("created_at", { ascending: false })
@@ -486,7 +491,7 @@ async function loadDashboard(note = null) {
     ? await supabaseClient
         .from("quote_requests")
         .select(
-          "id, request_code, customer_name, customer_phone, artisan_name, artisan_category, job_location, urgency, job_details, status, media_count, created_at",
+          "id, request_code, customer_name, customer_phone, artisan_name, artisan_phone, artisan_category, job_location, urgency, job_details, status, media_count, agreed_amount, customer_completed_at, artisan_completion_status, artisan_completion_note, artisan_completion_responded_at, created_at",
           { count: "exact" },
         )
         .eq("artisan_id", ownedArtisan.id)
@@ -497,6 +502,7 @@ async function loadDashboard(note = null) {
   quoteRecords = new Map();
   renderQuotes(quotesResult.data || []);
   renderQuoteLeads(quoteLeadsResult.data || [], quoteLeadsResult.count || 0);
+  openRequestedQuoteFromUrl();
   renderApplications(applicationsResult.data || []);
   renderArtisanProfile(artisansResult.data || [], applicationsResult.data || []);
   renderArtisanNextStep(applicationsResult.data || [], artisansResult.data || []);
@@ -517,7 +523,8 @@ async function loadDashboard(note = null) {
   if (currentProfile?.account_status === "restricted") {
     setNote(dashboardNote, `Account access is restricted. ${currentProfile.status_reason || "Contact support@fixam9ja.com."}`, "error");
   } else {
-    setNote(dashboardNote, note?.message || "", note?.type || "");
+    const arrivalNote = accountArrivalNote();
+    setNote(dashboardNote, note?.message || arrivalNote?.message || "", note?.type || arrivalNote?.type || "");
   }
 }
 
@@ -648,7 +655,7 @@ function renderQuotes(items) {
             <article class="quote-item" role="button" tabindex="0" data-quote-key="customer:${escapeHtml(item.id)}">
               <strong>${escapeHtml(item.request_code)} - ${escapeHtml(item.artisan_name)}</strong>
               <small>${escapeHtml(item.artisan_category)} at ${escapeHtml(item.job_location)}</small>
-              <small>${escapeHtml(item.status)} - ${item.media_count || 0} media - open details</small>
+              <small>${escapeHtml(item.status)}${item.agreed_amount ? ` - agreed ${formatNaira(item.agreed_amount)}` : ""} - ${item.media_count || 0} media - open details</small>
             </article>
           `,
         )
@@ -669,13 +676,31 @@ function renderQuoteLeads(items, total) {
               <article class="quote-item" role="button" tabindex="0" data-quote-key="lead:${escapeHtml(item.id)}">
                 <strong>${escapeHtml(item.request_code)} - ${escapeHtml(item.customer_name)}</strong>
                 <small>${escapeHtml(item.job_location)} - ${escapeHtml(item.urgency)} - ${escapeHtml(item.status)}</small>
-                <small>${escapeHtml(item.customer_phone)} - ${item.media_count || 0} media - open details</small>
+                <small>${item.agreed_amount ? `Agreed ${formatNaira(item.agreed_amount)} - ` : ""}${item.media_count || 0} media - open details</small>
               </article>
             `,
           )
           .join("")
       : `<article><span>No customer quote leads have arrived for your artisan profile yet.</span></article>`
     : `<article><span>Claim an artisan profile to see customer quote leads here.</span></article>`;
+}
+
+function openRequestedQuoteFromUrl() {
+  if (quoteArrivalHandled) return;
+  const url = new URL(window.location.href);
+  const quoteId = url.searchParams.get("quote");
+  if (!quoteId) return;
+  const entry = [...quoteRecords.entries()].find(([, quote]) => quote.id === quoteId);
+  if (!entry) return;
+  quoteArrivalHandled = true;
+  requestAnimationFrame(() => openQuoteDetails(entry[0]));
+  url.searchParams.delete("quote");
+  history.replaceState({}, "", url);
+}
+
+function accountArrivalNote() {
+  if (!initialReviewPublished) return null;
+  return { message: "Thank you. Your review was published successfully.", type: "success" };
 }
 
 function handleQuoteClick(event) {
@@ -700,18 +725,31 @@ async function openQuoteDetails(quoteKey) {
   quoteDialogTitle.textContent = `${quote.request_code} - ${
     quote.viewType === "lead" ? quote.customer_name : quote.artisan_name
   }`;
-  quoteDialogBody.innerHTML = renderQuoteDetails(quote, []);
+  quoteDialogBody.innerHTML = renderQuoteDetails(quote, [], []);
   if (!quoteDialog.open) quoteDialog.showModal();
 
-  const { data, error } = await supabaseClient
-    .from("media_uploads")
-    .select("file_name, public_url, bucket, storage_path, mime_type, created_at")
-    .eq("entity_type", "quote_request")
-    .in("entity_id", [String(quote.id), quote.request_code])
-    .order("created_at", { ascending: false });
+  const [mediaResult, offersResult] = await Promise.all([
+    supabaseClient
+      .from("media_uploads")
+      .select("file_name, public_url, bucket, storage_path, mime_type, created_at")
+      .eq("entity_type", "quote_request")
+      .in("entity_id", [String(quote.id), quote.request_code])
+      .order("created_at", { ascending: false }),
+    supabaseClient
+      .from("quote_offers")
+      .select("id, offered_by, amount, note, status, created_at, responded_at")
+      .eq("quote_request_id", quote.id)
+      .order("created_at", { ascending: false }),
+  ]);
 
-  const mediaItems = error ? [] : await resolvePrivateMediaUrls(data || []);
-  quoteDialogBody.innerHTML = renderQuoteDetails(quote, mediaItems, error?.message || "");
+  const mediaItems = mediaResult.error ? [] : await resolvePrivateMediaUrls(mediaResult.data || []);
+  quoteDialogBody.innerHTML = renderQuoteDetails(
+    quote,
+    mediaItems,
+    offersResult.error ? [] : offersResult.data || [],
+    mediaResult.error?.message || "",
+    offersResult.error?.message || "",
+  );
 }
 
 async function resolvePrivateMediaUrls(items) {
@@ -722,24 +760,26 @@ async function resolvePrivateMediaUrls(items) {
   }));
 }
 
-function renderQuoteDetails(quote, mediaItems, mediaError = "") {
+function renderQuoteDetails(quote, mediaItems, offers = [], mediaError = "", offerError = "") {
   const detailName = quote.viewType === "lead" ? quote.customer_name : quote.artisan_name;
   const phoneBlock =
     quote.viewType === "lead"
-      ? `<article><span>Customer phone</span>${escapeHtml(quote.customer_phone)}</article>`
-      : `<article><span>Trade</span>${escapeHtml(quote.artisan_category)}</article>`;
+      ? `<article><span>Customer contact</span>${renderPhoneLink(quote.customer_phone, "Call customer")}</article>`
+      : `<article><span>Artisan contact</span>${renderPhoneLink(quote.artisan_phone, "Call artisan")}</article>`;
   const actionBlock = quote.viewType === "lead" ? renderQuoteActions(quote) : "";
   const customerActionBlock = quote.viewType === "customer" ? renderCustomerQuoteActions(quote) : "";
 
   return `
     ${actionBlock}
     ${customerActionBlock}
+    ${renderQuoteNegotiation(quote, offers, offerError)}
     <div class="quote-detail-grid">
       <article><span>Name</span>${escapeHtml(detailName)}</article>
       <article><span>Location</span>${escapeHtml(quote.job_location)}</article>
       <article><span>Urgency</span>${escapeHtml(quote.urgency || "Not specified")}</article>
       <article><span>Status</span>${escapeHtml(quote.status)}</article>
       ${phoneBlock}
+      <article><span>Trade</span>${escapeHtml(quote.artisan_category)}</article>
       <article><span>Media count</span>${quote.media_count || 0}</article>
     </div>
     <div class="quote-details-text">
@@ -757,13 +797,62 @@ function renderQuoteDetails(quote, mediaItems, mediaError = "") {
   `;
 }
 
+function renderPhoneLink(phone, label) {
+  const display = String(phone || "").trim();
+  const callable = display.replace(/[^+\d]/g, "").replace(/(?!^)\+/g, "");
+  if (!callable) return "<span>Contact number unavailable</span>";
+  return `<a class="quote-phone-link" href="tel:${escapeHtml(callable)}">${escapeHtml(label)} · ${escapeHtml(display)}</a>`;
+}
+
+function renderQuoteNegotiation(quote, offers, offerError = "") {
+  const active = !["completed", "cancelled", "declined"].includes(quote.status);
+  const viewerParty = quote.viewType === "lead" ? "artisan" : "customer";
+  const pendingOffer = offers.find((offer) => offer.status === "pending") || null;
+  const acceptedOffer = offers.find((offer) => offer.status === "accepted") || null;
+  const agreedAmount = Number(quote.agreed_amount || acceptedOffer?.amount || 0);
+  const incomingOffer = pendingOffer && pendingOffer.offered_by !== viewerParty;
+  const offerLabel = pendingOffer?.offered_by === "artisan" ? "Artisan offer" : "Customer offer";
+  const history = offers.length
+    ? `<div class="offer-history">${offers.slice(0, 6).map((offer) => `
+        <article>
+          <div><strong>${offer.offered_by === "artisan" ? "Artisan" : "Customer"} · ${formatNaira(offer.amount)}</strong><span class="offer-status is-${escapeHtml(offer.status)}">${escapeHtml(offer.status)}</span></div>
+          ${offer.note ? `<p>${escapeHtml(offer.note)}</p>` : ""}
+          <small>${new Date(offer.created_at).toLocaleString("en-NG")}</small>
+        </article>`).join("")}</div>`
+    : `<p class="form-note">No price has been proposed yet. Discuss the work, then record the amount here.</p>`;
+
+  return `
+    <section class="quote-negotiation" data-quote-id="${escapeHtml(quote.id)}">
+      <div class="card-title-row">
+        <div><span class="section-label">Price agreement</span><h3>${agreedAmount ? `Agreed price: ${formatNaira(agreedAmount)}` : "Agree the cost of work"}</h3></div>
+      </div>
+      ${offerError ? `<p class="form-note error-note">Price negotiation is temporarily unavailable: ${escapeHtml(offerError)}</p>` : ""}
+      ${pendingOffer ? `<div class="current-offer"><span>${escapeHtml(offerLabel)}</span><strong>${formatNaira(pendingOffer.amount)}</strong>${pendingOffer.note ? `<p>${escapeHtml(pendingOffer.note)}</p>` : ""}</div>` : ""}
+      ${incomingOffer && active ? `<div class="quote-action-buttons offer-response-buttons">
+        <button class="primary-action" type="button" data-offer-response="accepted" data-offer-id="${escapeHtml(pendingOffer.id)}">Accept price</button>
+        <button class="danger-action" type="button" data-offer-response="declined" data-offer-id="${escapeHtml(pendingOffer.id)}">Decline offer</button>
+      </div>` : ""}
+      ${pendingOffer && !incomingOffer ? `<p class="form-note">Waiting for the ${viewerParty === "artisan" ? "customer" : "artisan"} to respond. You can revise it below.</p>` : ""}
+      ${active && !agreedAmount ? `<form class="quote-offer-form" data-quote-offer-form data-quote-id="${escapeHtml(quote.id)}">
+        <label><span>${pendingOffer ? "Counter or revise price (NGN)" : "Proposed price (NGN)"}</span><input name="amount" type="number" min="100" max="100000000" step="100" inputmode="numeric" placeholder="e.g. 15000" required /></label>
+        <label><span>Short note (optional)</span><textarea name="note" rows="2" maxlength="500" placeholder="What the price covers"></textarea></label>
+        <button class="secondary-action" type="submit">${pendingOffer ? "Send counteroffer" : "Send price offer"}</button>
+      </form>` : ""}
+      <details class="offer-history-disclosure" ${offers.length ? "" : "hidden"}><summary>Price history</summary>${history}</details>
+    </section>`;
+}
+
 function renderCustomerQuoteActions(quote) {
   const canCancel = ["new", "contacted"].includes(quote.status);
   const canComplete = ["contacted", "accepted"].includes(quote.status);
   const reviewUrl = quote.status === "completed" ? reviewLinkForQuote(quote) : "";
   const statusText =
     quote.status === "completed"
-      ? "This job is marked complete. You can now review the artisan and attach proof of work."
+      ? quote.artisan_completion_status === "confirmed"
+        ? "The artisan confirmed completion. You can review the service below."
+        : quote.artisan_completion_status === "disputed"
+          ? "The artisan reported an issue with completion. Call them to resolve the outstanding point."
+          : "You marked this job complete. The artisan has been asked to confirm it."
       : quote.status === "cancelled"
         ? "You cancelled this request. It remains here for your records."
         : quote.status === "declined"
@@ -802,9 +891,16 @@ function renderCustomerQuoteActions(quote) {
 }
 
 function renderQuoteActions(quote) {
-  const disabled = ["accepted", "declined", "completed", "cancelled"].includes(quote.status);
+  const canRespond = ["new", "contacted"].includes(quote.status);
+  const completionPending = quote.status === "completed" && (quote.artisan_completion_status || "pending") === "pending";
   const statusText =
-    quote.status === "accepted"
+    quote.status === "completed"
+      ? quote.artisan_completion_status === "confirmed"
+        ? "You confirmed that this job is complete. It now counts in your completed work."
+        : quote.artisan_completion_status === "disputed"
+          ? `You reported an issue with completion${quote.artisan_completion_note ? `: ${quote.artisan_completion_note}` : "."}`
+          : "The customer marked this job complete. Confirm it or report an issue below."
+      : quote.status === "accepted"
       ? "You accepted this job. Contact the customer to agree price, timing, and next steps."
       : quote.status === "declined"
         ? "You declined this quote. It will stay in your history for reference."
@@ -819,18 +915,17 @@ function renderQuoteActions(quote) {
         <strong>${escapeHtml(statusText)}</strong>
       </div>
       <div class="quote-action-buttons">
-        <button class="primary-action" type="button" data-quote-action="accepted" ${disabled ? "disabled" : ""}>
-          Accept job
-        </button>
-        <button class="secondary-action" type="button" data-quote-action="contacted" ${
-          disabled || quote.status === "contacted" ? "disabled" : ""
-        }>
-          Mark contacted
-        </button>
-        <button class="danger-action" type="button" data-quote-action="declined" ${disabled ? "disabled" : ""}>
-          Decline
-        </button>
+        ${canRespond ? `<button class="primary-action" type="button" data-quote-action="accepted">Accept job</button>` : ""}
+        ${quote.status === "new" ? `<button class="secondary-action" type="button" data-quote-action="contacted">Mark contacted</button>` : ""}
+        ${canRespond ? `<button class="danger-action" type="button" data-quote-action="declined">Decline</button>` : ""}
       </div>
+      ${completionPending ? `<div class="completion-response">
+        <label><span>Completion note (optional)</span><textarea data-completion-note rows="2" maxlength="500" placeholder="Add a short note if something remains unresolved"></textarea></label>
+        <div class="quote-action-buttons">
+          <button class="primary-action" type="button" data-quote-completion="confirmed">Confirm completed</button>
+          <button class="danger-action" type="button" data-quote-completion="disputed">Report an issue</button>
+        </div>
+      </div>` : ""}
     </section>
   `;
 }
@@ -870,9 +965,108 @@ async function handleQuoteAction(event) {
   quote.status = updatedQuote?.status || nextStatus;
   const quoteKey = `${quote.viewType}:${quote.id}`;
   quoteRecords.set(quoteKey, quote);
-  setNote(dashboardNote, `${quote.request_code} updated to ${nextStatus}.`, "success");
+  await loadDashboard({ message: `${quote.request_code} updated to ${nextStatus}.`, type: "success" });
   await openQuoteDetails(quoteKey);
-  await loadDashboard();
+}
+
+async function handleQuoteOfferSubmit(event) {
+  const form = event.target.closest("[data-quote-offer-form]");
+  if (!form) return;
+  event.preventDefault();
+  const quoteId = form.dataset.quoteId;
+  const quote = [...quoteRecords.values()].find((item) => item.id === quoteId);
+  if (!quote) return;
+
+  const amount = Math.round(Number(new FormData(form).get("amount")));
+  const note = String(new FormData(form).get("note") || "").trim();
+  const button = form.querySelector("button[type='submit']");
+  const originalText = button.textContent;
+  button.disabled = true;
+  button.textContent = "Sending...";
+
+  const { error } = await supabaseClient.rpc("make_quote_offer", {
+    p_quote_id: quote.id,
+    p_amount: amount,
+    p_note: note || null,
+  });
+  if (error) {
+    button.disabled = false;
+    button.textContent = originalText;
+    showQuoteDialogError(`Could not send price: ${error.message}`);
+    return;
+  }
+
+  await refreshOpenQuote(quote, `${quote.request_code}: price offer sent.`);
+}
+
+async function handleQuoteOfferResponse(event) {
+  const button = event.target.closest("[data-offer-response]");
+  if (!button) return;
+  const actionPanel = button.closest("[data-quote-id]");
+  const quote = [...quoteRecords.values()].find((item) => item.id === actionPanel?.dataset.quoteId);
+  if (!quote) return;
+  const originalText = button.textContent;
+  button.disabled = true;
+  button.textContent = "Saving...";
+
+  const { error } = await supabaseClient.rpc("respond_to_quote_offer", {
+    p_offer_id: button.dataset.offerId,
+    p_response: button.dataset.offerResponse,
+  });
+  if (error) {
+    button.disabled = false;
+    button.textContent = originalText;
+    showQuoteDialogError(`Could not update the price offer: ${error.message}`);
+    return;
+  }
+
+  const message = button.dataset.offerResponse === "accepted" ? "Price accepted." : "Price offer declined.";
+  await refreshOpenQuote(quote, `${quote.request_code}: ${message}`);
+}
+
+async function handleQuoteCompletionResponse(event) {
+  const button = event.target.closest("[data-quote-completion]");
+  if (!button) return;
+  const actionPanel = button.closest("[data-quote-id]");
+  const quote = [...quoteRecords.values()].find((item) => item.id === actionPanel?.dataset.quoteId);
+  if (!quote) return;
+  const note = actionPanel.querySelector("[data-completion-note]")?.value.trim() || "";
+  if (button.dataset.quoteCompletion === "disputed" && !note) {
+    showQuoteDialogError("Add a short note explaining what remains unresolved.");
+    return;
+  }
+  const originalText = button.textContent;
+  button.disabled = true;
+  button.textContent = "Saving...";
+
+  const { error } = await supabaseClient.rpc("respond_to_quote_completion", {
+    p_quote_id: quote.id,
+    p_response: button.dataset.quoteCompletion,
+    p_note: note || null,
+  });
+  if (error) {
+    button.disabled = false;
+    button.textContent = originalText;
+    showQuoteDialogError(`Could not save your completion response: ${error.message}`);
+    return;
+  }
+
+  await refreshOpenQuote(
+    quote,
+    button.dataset.quoteCompletion === "confirmed"
+      ? `${quote.request_code}: completion confirmed.`
+      : `${quote.request_code}: completion issue recorded.`,
+  );
+}
+
+async function refreshOpenQuote(quote, message) {
+  const quoteKey = `${quote.viewType}:${quote.id}`;
+  await loadDashboard({ message, type: "success" });
+  await openQuoteDetails(quoteKey);
+}
+
+function showQuoteDialogError(message) {
+  quoteDialogBody.insertAdjacentHTML("afterbegin", `<p class="form-note error-note">${escapeHtml(message)}</p>`);
 }
 
 function reviewLinkForQuote(quote) {

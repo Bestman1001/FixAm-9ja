@@ -93,8 +93,11 @@ reviewForm.addEventListener("submit", async (event) => {
         } attached.`,
     mediaResult.error ? "error" : "success",
   );
-  submitButton.textContent = "Review published";
+  submitButton.textContent = "Returning to your account...";
   reviewForm.reset();
+  window.setTimeout(() => {
+    window.location.assign("account.html?review=published");
+  }, 1400);
 });
 
 async function currentUserId() {

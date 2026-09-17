@@ -37,11 +37,12 @@ Verify SPF, DKIM and DMARC for the authentication sending domain before sending 
 3. Apply `supabase/admin-automation.sql`.
 4. Apply `supabase/app-readiness.sql`.
 5. Apply `supabase/qoreid-collection-readiness.sql`, then `supabase/nin-face-match-profile-readiness.sql`, after `app-readiness.sql` so account-owned applications use QoreID NIN Face Match and require a public profile photograph before publication.
-6. Apply `supabase/admin-user-counts.sql` to enable admin access to user totals.
-7. Deploy `verify-nin`, `qoreid-webhook`, `delete-account` and `admin-manage-users` Edge Functions. Set `APP_ORIGIN=https://www.fixam9ja.com` for production and the staging origin in staging.
-8. Configure allowed authentication redirect URLs for production and staging.
-9. Validate Row Level Security with separate customer, artisan, admin and anonymous sessions.
-10. Run `./scripts/verify-production.ps1` before deployment. These static checks do not establish that remote migrations, secrets, authentication or provider integrations are working; complete the release tests below in staging.
+6. Apply `supabase/quote-negotiation.sql` so linked customers and artisans can agree prices, receive deep-linked updates, call each other, and acknowledge job completion.
+7. Apply `supabase/admin-user-counts.sql` to enable admin access to user totals.
+8. Deploy `verify-nin`, `qoreid-webhook`, `delete-account` and `admin-manage-users` Edge Functions. Set `APP_ORIGIN=https://www.fixam9ja.com` for production and the staging origin in staging.
+9. Configure allowed authentication redirect URLs for production and staging.
+10. Validate Row Level Security with separate customer, artisan, admin and anonymous sessions.
+11. Run `./scripts/verify-production.ps1` before deployment. These static checks do not establish that remote migrations, secrets, authentication or provider integrations are working; complete the release tests below in staging.
 
 For recurring subscriptions, then apply `supabase/paystack-billing.sql` last and complete `PAYSTACK-SETUP.md` before deploying the website. This includes the Paystack plans and secrets, both payment functions, and redeployment of the account-deletion, admin-user-management and QoreID webhook functions. Run `pnpm test` as well as the static release checks.
 
@@ -50,7 +51,10 @@ For recurring subscriptions, then apply `supabase/paystack-billing.sql` last and
 - Customer registration, email confirmation, sign-in and sign-out.
 - Artisan registration, application ownership, identity verification and profile activation.
 - Customer quote creation; artisan access is limited to its own leads.
-- Quote status notification and notification preference updates.
+- Customer and artisan can call each other from the job room; unrelated accounts cannot read either contact or offer history.
+- Either participant can propose or counter a price, only the other participant can accept it, and the agreed price appears for both parties.
+- Customer completion prompts an artisan confirmation or issue response; confirmation increments completed work only once.
+- Quote status and price notifications open the matching job room, and a published review returns the customer to their dashboard.
 - Admin role enforcement and MFA on every production administrator account.
 - Private verification media cannot be read by customers, artisans or anonymous visitors.
 - Unsupported or oversized uploads are rejected.
