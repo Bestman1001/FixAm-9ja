@@ -920,6 +920,19 @@ footer a:hover {
   z-index: 2;
 }
 
+.profile-panel .modal-close {
+  float: none;
+  display: block;
+  margin-left: auto;
+}
+
+.profile-panel #profileContent {
+  clear: both;
+  width: min(820px, 100%);
+  margin: 0 auto;
+  padding-top: 18px;
+}
+
 .profile-hero {
   display: grid;
   grid-template-columns: 92px 1fr;
@@ -938,6 +951,7 @@ footer a:hover {
   color: white;
   font-size: 1.8rem;
   font-weight: 950;
+  overflow: hidden;
 }
 
 .profile-hero h2,
@@ -1022,6 +1036,10 @@ footer a:hover {
   display: block;
   margin-top: 4px;
   color: var(--muted);
+}
+
+.review-star {
+  color: var(--gold);
 }
 
 .profile-actions {
@@ -1444,6 +1462,45 @@ footer a:hover {
 
   .modal-close {
     min-height: 40px;
+  }
+
+  .profile-panel #profileContent {
+    padding-top: 24px;
+  }
+
+  .profile-panel .profile-hero {
+    justify-items: center;
+    gap: 28px;
+    text-align: center;
+  }
+
+  .profile-panel .profile-avatar {
+    margin-inline: auto;
+  }
+
+  .profile-panel .profile-hero > div:last-child {
+    width: 100%;
+  }
+
+  .profile-panel .profile-hero .eyebrow,
+  .profile-panel .profile-hero h2,
+  .profile-panel .profile-hero p {
+    margin-right: auto;
+    margin-left: auto;
+  }
+
+  .profile-panel .profile-metrics span,
+  .profile-panel .profile-grid section,
+  .profile-panel .portfolio-grid article {
+    text-align: center;
+  }
+
+  .profile-panel .badge-row {
+    justify-content: center;
+  }
+
+  .profile-panel .profile-actions {
+    justify-content: center;
   }
 
   body {

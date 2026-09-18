@@ -1432,7 +1432,7 @@ function reviewSummary(artisan) {
   const average = (stats.total / stats.count).toFixed(1);
   const recommendRate = Math.round((stats.recommend / stats.count) * 100);
   const latest = stats.latest
-    .map((review) => `<article><strong>★ ${review.rating}</strong><small>${escapeHtml(review.comment)}</small></article>`)
+    .map((review) => `<article><strong class="review-star">★ ${review.rating}</strong><small>${escapeHtml(review.comment)}</small></article>`)
     .join("");
 
   return `
