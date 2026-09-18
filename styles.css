@@ -920,16 +920,8 @@ footer a:hover {
   z-index: 2;
 }
 
-.profile-panel .modal-close {
-  float: none;
-  display: block;
-  margin-left: auto;
-}
-
 .profile-panel #profileContent {
   clear: both;
-  width: min(820px, 100%);
-  margin: 0 auto;
   padding-top: 18px;
 }
 
@@ -965,6 +957,22 @@ footer a:hover {
 .form-note {
   color: var(--muted);
   line-height: 1.6;
+}
+
+.profile-profession,
+.profile-description,
+.profile-skills {
+  text-align: center;
+}
+
+.profile-description {
+  max-width: 680px;
+  margin-right: auto;
+  margin-left: auto;
+}
+
+.profile-skills .badge-row {
+  justify-content: center;
 }
 
 .profile-metrics {
@@ -1469,38 +1477,11 @@ footer a:hover {
   }
 
   .profile-panel .profile-hero {
-    justify-items: center;
     gap: 28px;
-    text-align: center;
-  }
-
-  .profile-panel .profile-avatar {
-    margin-inline: auto;
   }
 
   .profile-panel .profile-hero > div:last-child {
     width: 100%;
-  }
-
-  .profile-panel .profile-hero .eyebrow,
-  .profile-panel .profile-hero h2,
-  .profile-panel .profile-hero p {
-    margin-right: auto;
-    margin-left: auto;
-  }
-
-  .profile-panel .profile-metrics span,
-  .profile-panel .profile-grid section,
-  .profile-panel .portfolio-grid article {
-    text-align: center;
-  }
-
-  .profile-panel .badge-row {
-    justify-content: center;
-  }
-
-  .profile-panel .profile-actions {
-    justify-content: center;
   }
 
   body {

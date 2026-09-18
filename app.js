@@ -1786,9 +1786,9 @@ function openProfile(artisan) {
     <div class="profile-hero">
       <div class="profile-avatar">${artisan.imageUrl ? `<img src="${escapeHtml(artisan.imageUrl)}" alt="${escapeHtml(artisan.name)}" />` : escapeHtml(artisan.initials)}</div>
       <div>
-        <p class="eyebrow">${artisan.category} in ${artisanLocation(artisan)}</p>
+        <p class="eyebrow profile-profession">${artisan.category} in ${artisanLocation(artisan)}</p>
         <h2 id="profileTitle">${artisan.name}</h2>
-        <p>${artisan.bio}</p>
+        <p class="profile-description">${artisan.bio}</p>
       </div>
     </div>
     <div class="profile-metrics">
@@ -1799,7 +1799,7 @@ function openProfile(artisan) {
       <span><strong>${artisan.radius} mi</strong> Service radius</span>
     </div>
     <div class="profile-grid">
-      <section>
+      <section class="profile-skills">
         <h3>Skills</h3>
         <div class="badge-row">${artisan.skills.map((skill) => `<span class="badge">${skill}</span>`).join("")}</div>
       </section>

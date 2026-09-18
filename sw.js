@@ -1,4 +1,4 @@
-const CACHE_NAME = "fixam9ja-shell-v20";
+const CACHE_NAME = "fixam9ja-shell-v21";
 const APP_SHELL = [
   "./",
   "./index.html",
