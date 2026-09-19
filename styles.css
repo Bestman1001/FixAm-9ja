@@ -922,15 +922,22 @@ footer a:hover {
 
 .profile-panel #profileContent {
   clear: both;
+  width: 100%;
   padding-top: 18px;
 }
 
 .profile-hero {
   display: grid;
-  grid-template-columns: 92px 1fr;
-  gap: 20px;
-  align-items: center;
-  padding-right: 72px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 28px;
+  align-items: start;
+  width: 100%;
+  padding-right: 0;
+}
+
+.profile-hero > div:last-child {
+  width: 100%;
+  min-width: 0;
 }
 
 .profile-avatar {
@@ -962,17 +969,22 @@ footer a:hover {
 .profile-profession,
 .profile-description,
 .profile-skills {
-  text-align: center;
+  text-align: left;
 }
 
 .profile-description {
-  max-width: 680px;
-  margin-right: auto;
-  margin-left: auto;
+  width: 100%;
+  max-width: none;
+  margin-right: 0;
+  margin-left: 0;
+}
+
+.profile-skills {
+  grid-column: 1 / -1;
 }
 
 .profile-skills .badge-row {
-  justify-content: center;
+  justify-content: flex-start;
 }
 
 .profile-metrics {
@@ -1474,14 +1486,6 @@ footer a:hover {
 
   .profile-panel #profileContent {
     padding-top: 24px;
-  }
-
-  .profile-panel .profile-hero {
-    gap: 28px;
-  }
-
-  .profile-panel .profile-hero > div:last-child {
-    width: 100%;
   }
 
   body {
