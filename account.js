@@ -18,6 +18,13 @@ const adminPortalLink = document.querySelector("#adminPortalLink");
 const signOutButton = document.querySelector("#signOutButton");
 const magicLinkButton = document.querySelector("#magicLinkButton");
 const googleSignInButton = document.querySelector("#googleSignInButton");
+const googleSignInLabel = document.querySelector("#googleSignInLabel");
+const accountRoleChoices = document.querySelector("#accountRoleChoices");
+const accountRoleInput = document.querySelector("#accountRole");
+const accountRoleGuidance = document.querySelector("#accountRoleGuidance");
+const authRoleEyebrow = document.querySelector("#authRoleEyebrow");
+const authRoleTitle = document.querySelector("#authRoleTitle");
+const authRoleDescription = document.querySelector("#authRoleDescription");
 const refreshButton = document.querySelector("#refreshButton");
 const claimProfileButton = document.querySelector("#claimProfileButton");
 const portfolioUploadButton = document.querySelector("#portfolioUploadButton");
@@ -68,10 +75,19 @@ let onboardingArrivalHandled = false;
 let quoteArrivalHandled = false;
 let verificationRefreshTimer = null;
 let verificationRefreshCount = 0;
+let accountRoleMismatch = null;
 
 if (!supabaseClient) {
   setNote(authNote, "Supabase is not configured yet. Accounts cannot be used.", "error");
 }
+
+initializeAccountEntry();
+
+accountRoleChoices?.addEventListener("click", (event) => {
+  const choice = event.target.closest("[data-account-role]");
+  if (!choice) return;
+  selectAccountRole(choice.dataset.accountRole, { updateUrl: true });
+});
 
 authForm.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -533,12 +549,19 @@ async function loadProfile() {
   const { data } = await supabaseClient.from("user_profiles").select("*").eq("user_id", currentUser.id).maybeSingle();
   const wantsArtisan = isArtisanOnboardingRequested();
   const googleIntent = readGoogleAuthIntent();
+  const requestedRole = requestedAccountRole(googleIntent);
   if (data) {
+    const hasSavedRole = data.role === "customer" || data.role === "artisan";
+    const savedRole = hasSavedRole ? data.role : (requestedRole || "customer");
+    if (hasSavedRole && requestedRole && requestedRole !== savedRole) {
+      accountRoleMismatch = { requestedRole, savedRole };
+      clearArtisanOnboardingIntent();
+    }
     const updatedProfile = {
       ...data,
       full_name: data.full_name || googleIntent.fullName || currentUser.user_metadata?.full_name || currentUser.user_metadata?.name,
       phone: data.phone || googleIntent.phone || currentUser.user_metadata?.phone || "",
-      role: wantsArtisan ? "artisan" : data.role,
+      role: savedRole,
     };
     if (
       updatedProfile.role !== data.role ||
@@ -561,7 +584,7 @@ async function loadProfile() {
     email: currentUser.email,
     full_name: googleIntent.fullName || currentUser.user_metadata?.full_name || currentUser.user_metadata?.name || currentUser.email?.split("@")[0] || "FixAm user",
     phone: googleIntent.phone || currentUser.user_metadata?.phone || "",
-    role: wantsArtisan || googleIntent.role === "artisan" ? "artisan" : (currentUser.user_metadata?.role || "customer"),
+    role: requestedRole || (wantsArtisan || googleIntent.role === "artisan" ? "artisan" : (currentUser.user_metadata?.role || "customer")),
   };
   await saveUserProfile({
     email: fallback.email,
@@ -582,6 +605,57 @@ function readGoogleAuthIntent() {
     return intent && typeof intent === "object" ? intent : {};
   } catch (_error) {
     return {};
+  }
+}
+
+function requestedAccountRole(intent = readGoogleAuthIntent()) {
+  const params = new URLSearchParams(window.location.search);
+  const urlRole = params.get("role");
+  if (urlRole === "customer" || urlRole === "artisan") return urlRole;
+  if (params.get("onboarding") === "artisan") return "artisan";
+  if (intent?.role === "customer" || intent?.role === "artisan") return intent.role;
+  return null;
+}
+
+function initializeAccountEntry() {
+  const params = new URLSearchParams(window.location.search);
+  const role = requestedAccountRole({}) || "customer";
+  selectAccountRole(role, { updateUrl: false });
+  if (params.get("intent") === "signup") {
+    const authMode = document.querySelector("#authMode");
+    if (authMode) authMode.value = "signup";
+  }
+}
+
+function selectAccountRole(role, { updateUrl = false } = {}) {
+  const selectedRole = role === "artisan" ? "artisan" : "customer";
+  if (accountRoleInput) accountRoleInput.value = selectedRole;
+  accountRoleChoices?.querySelectorAll("[data-account-role]").forEach((choice) => {
+    choice.setAttribute("aria-pressed", String(choice.dataset.accountRole === selectedRole));
+  });
+
+  const artisan = selectedRole === "artisan";
+  if (authRoleEyebrow) authRoleEyebrow.textContent = artisan ? "Artisan account" : "Customer account";
+  if (authRoleTitle) authRoleTitle.textContent = artisan ? "Join as an artisan" : "Join as a customer";
+  if (authRoleDescription) {
+    authRoleDescription.textContent = artisan
+      ? "Advertise your skills, complete verification, and receive customer enquiries."
+      : "Find trusted artisans, request quotes, and manage your jobs.";
+  }
+  if (accountRoleGuidance) {
+    accountRoleGuidance.textContent = artisan
+      ? "You are creating or signing in to an artisan account for offering skilled services."
+      : "You are creating or signing in to a customer account for hiring skilled workers.";
+  }
+  const article = artisan ? "an" : "a";
+  const roleLabel = artisan ? "artisan" : "customer";
+  if (googleSignInLabel) googleSignInLabel.textContent = `Continue with Google as ${article} ${roleLabel}`;
+  if (magicLinkButton) magicLinkButton.textContent = `Email me ${article} ${roleLabel} sign-in link`;
+
+  if (updateUrl) {
+    const url = new URL(window.location.href);
+    url.searchParams.set("role", selectedRole);
+    history.replaceState({}, "", url);
   }
 }
 
@@ -700,6 +774,19 @@ function openRequestedQuoteFromUrl() {
 }
 
 function accountArrivalNote() {
+  if (accountRoleMismatch) {
+    const savedLabel = accountRoleMismatch.savedRole === "artisan" ? "Artisan" : "Customer";
+    accountRoleMismatch = null;
+    const url = new URL(window.location.href);
+    url.searchParams.delete("role");
+    url.searchParams.delete("onboarding");
+    url.searchParams.delete("source");
+    history.replaceState({}, "", url);
+    return {
+      message: `You signed in to an existing ${savedLabel} account. We kept its saved account type unchanged. Contact support if you need to add a different type of access.`,
+      type: "success",
+    };
+  }
   if (!initialReviewPublished) return null;
   return { message: "Thank you. Your review was published successfully.", type: "success" };
 }
@@ -1591,9 +1678,10 @@ function phoneKey(value) {
 
 function accountRedirectUrl(role = "customer", source = "account") {
   const url = new URL(productionAccountUrl);
+  url.searchParams.set("role", role === "artisan" ? "artisan" : "customer");
+  url.searchParams.set("source", source);
   if (role === "artisan") {
     url.searchParams.set("onboarding", "artisan");
-    url.searchParams.set("source", source);
   }
   return url.href;
 }

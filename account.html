@@ -8,7 +8,7 @@
     <link rel="icon" href="fixam-logo.jpg" />
     <link rel="manifest" href="manifest.webmanifest" />
     <meta name="theme-color" content="#064c48" />
-    <link rel="stylesheet" href="account.css?v=20260917-quote-workflow" />
+    <link rel="stylesheet" href="account.css?v=20260919-clear-account-roles" />
     <link rel="stylesheet" href="help-widget.css?v=20260815-app-ready" />
   </head>
   <body>
@@ -35,27 +35,34 @@
 
     <main class="account-shell">
       <section class="intro-panel">
-        <p class="eyebrow">Your FixAm account</p>
-        <h1>Manage jobs, profiles, and proof of work.</h1>
+        <p class="eyebrow">Choose your account</p>
+        <h1>Tell us how you want to use FixAm 9ja.</h1>
         <p>
-          Customers can track quote requests. Artisans can claim their profile and upload portfolio media.
+          Customers hire skilled workers. Artisans advertise their services and receive job enquiries.
         </p>
       </section>
 
       <section class="auth-panel" id="authPanel">
         <div class="auth-intro">
-          <p class="eyebrow">Easy sign in</p>
-          <h2>Enter your email and continue.</h2>
-          <p>No password is needed when you use the email sign-in link.</p>
+          <p class="eyebrow" id="authRoleEyebrow">Choose an account type</p>
+          <h2 id="authRoleTitle">How will you use FixAm 9ja?</h2>
+          <p id="authRoleDescription">Choose the option that describes what you want to do.</p>
         </div>
         <form class="account-form" id="authForm">
-          <label>
-            <span>Account type</span>
-            <select id="accountRole">
-              <option value="customer">Customer</option>
-              <option value="artisan">Artisan</option>
-            </select>
-          </label>
+          <div class="account-role-choices full-span" id="accountRoleChoices" aria-label="Account type">
+            <button class="account-role-choice" type="button" data-account-role="customer" aria-pressed="true">
+              <span class="role-choice-kicker">Customer</span>
+              <strong>I need a service</strong>
+              <small>Find artisans, request quotes, agree prices, and manage jobs.</small>
+            </button>
+            <button class="account-role-choice" type="button" data-account-role="artisan" aria-pressed="false">
+              <span class="role-choice-kicker">Artisan</span>
+              <strong>I provide services</strong>
+              <small>Create a verified business profile and receive customer enquiries.</small>
+            </button>
+          </div>
+          <input id="accountRole" type="hidden" value="customer" />
+          <p class="account-role-guidance full-span" id="accountRoleGuidance">You are creating or signing in to a customer account.</p>
           <label>
             <span>Full name</span>
             <input id="fullName" type="text" placeholder="e.g. Ada Okafor" />
@@ -69,8 +76,8 @@
             <input id="email" type="email" placeholder="you@example.com" required />
           </label>
           <div class="form-actions">
-            <button class="google-action" type="button" id="googleSignInButton"><img class="google-icon" src="google-g-logo.png" alt="" width="18" height="18" /> Continue with Google</button>
-            <button class="primary-action" type="button" id="magicLinkButton">Email me a sign-in link</button>
+            <button class="google-action" type="button" id="googleSignInButton"><img class="google-icon" src="google-g-logo.png" alt="" width="18" height="18" /> <span id="googleSignInLabel">Continue with Google as a customer</span></button>
+            <button class="primary-action" type="button" id="magicLinkButton">Email me a customer sign-in link</button>
           </div>
           <details class="password-panel">
             <summary>Use password instead</summary>
@@ -300,7 +307,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="location-data.js?v=20260814-map"></script>
     <script src="supabase-config.js?v=20260814"></script>
-    <script src="account.js?v=20260917-role-navigation"></script>
+    <script src="account.js?v=20260919-clear-account-roles"></script>
     <script src="help-widget.js?v=20260823-mailboxes"></script>
   </body>
 </html>

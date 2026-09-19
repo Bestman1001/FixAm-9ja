@@ -242,6 +242,72 @@ p {
   line-height: 1.05;
 }
 
+.account-role-choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.account-role-choice {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  min-height: 154px;
+  padding: 18px;
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--ink);
+  text-align: left;
+}
+
+.account-role-choice:hover,
+.account-role-choice:focus-visible {
+  border-color: var(--green);
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(11, 143, 100, 0.11);
+}
+
+.account-role-choice[aria-pressed="true"] {
+  border-color: var(--deep);
+  background: #edf8f4;
+  box-shadow: inset 0 0 0 1px var(--deep);
+}
+
+.role-choice-kicker {
+  width: fit-content;
+  margin: 0;
+  padding: 4px 8px;
+  border-radius: 999px;
+  color: var(--deep);
+  background: #dff1e9;
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.account-role-choice strong {
+  font-size: 1.16rem;
+  line-height: 1.15;
+}
+
+.account-role-choice small {
+  color: var(--muted);
+  font-size: 0.87rem;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+.account-role-guidance {
+  margin: -2px 0 0;
+  padding: 11px 13px;
+  border-radius: 8px;
+  color: var(--deep);
+  background: #f0f7f4;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
 .account-form {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1124,6 +1190,14 @@ textarea:focus {
     align-items: stretch;
     flex-direction: column;
     grid-template-columns: 1fr;
+  }
+
+  .account-role-choices {
+    grid-template-columns: 1fr;
+  }
+
+  .account-role-choice {
+    min-height: 0;
   }
 
   .onboarding-guide-heading,
