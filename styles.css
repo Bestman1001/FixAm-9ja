@@ -586,6 +586,37 @@ textarea {
   border-radius: 8px;
 }
 
+.artisan-card-profile {
+  display: grid;
+  width: 100%;
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.artisan-card-profile:hover .artisan-identity h3,
+.artisan-card-profile:focus-visible .artisan-identity h3 {
+  color: var(--green);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.artisan-card-profile:focus-visible {
+  outline: 3px solid rgba(11, 143, 100, 0.3);
+  outline-offset: 5px;
+}
+
+.artisan-card:has(.artisan-card-profile:hover),
+.artisan-card:has(.artisan-card-profile:focus-visible) {
+  border-color: rgba(11, 143, 100, 0.55);
+  box-shadow: 0 12px 28px rgba(15, 47, 43, 0.1);
+}
+
 button.category-card {
   display: grid;
   width: 100%;

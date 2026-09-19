@@ -489,25 +489,27 @@ function renderCards(matches) {
       .map(
         (artisan) => `
           <article class="artisan-card">
-            <div class="artisan-top">
-              <div class="artisan-identity">
-                <div class="artisan-card-avatar">${artisan.imageUrl ? `<img src="${escapeHtml(artisan.imageUrl)}" alt="${escapeHtml(artisan.name)}" />` : escapeHtml(artisan.initials)}</div>
-                <div>
-                  <h3>${artisan.name}</h3>
-                  <p>${artisan.category} in ${artisanLocation(artisan)}</p>
+            <button class="artisan-card-profile" type="button" data-action="profile" data-artisan-id="${artisan.id}" aria-label="View ${escapeHtml(artisan.name)} profile">
+              <div class="artisan-top">
+                <div class="artisan-identity">
+                  <div class="artisan-card-avatar">${artisan.imageUrl ? `<img src="${escapeHtml(artisan.imageUrl)}" alt="" />` : escapeHtml(artisan.initials)}</div>
+                  <div>
+                    <h3>${artisan.name}</h3>
+                    <p>${artisan.category} in ${artisanLocation(artisan)}</p>
+                  </div>
                 </div>
+                <span class="rating">${displayRating(artisan)}</span>
               </div>
-              <span class="rating">${displayRating(artisan)}</span>
-            </div>
-            <div class="badge-row">
-              <span class="badge ${artisan.plan === "Pro" ? "gold" : ""}">FixAm ${artisan.plan}</span>
-              <span class="badge gold">NIN verified</span>
-              <span class="badge">${subscriptionAccessLabel(artisan.subscriptionStatus)}</span>
-              ${qualityBadge(artisan)}
-              <span class="badge">${artisan.distance.toFixed(1)} miles away</span>
-              <span class="badge">${artisan.jobs} jobs</span>
-              <span class="badge">${artisan.response}</span>
-            </div>
+              <div class="badge-row">
+                <span class="badge ${artisan.plan === "Pro" ? "gold" : ""}">FixAm ${artisan.plan}</span>
+                <span class="badge gold">NIN verified</span>
+                <span class="badge">${subscriptionAccessLabel(artisan.subscriptionStatus)}</span>
+                ${qualityBadge(artisan)}
+                <span class="badge">${artisan.distance.toFixed(1)} miles away</span>
+                <span class="badge">${artisan.jobs} jobs</span>
+                <span class="badge">${artisan.response}</span>
+              </div>
+            </button>
             <div class="card-actions">
               <button type="button" data-action="quote" data-artisan-id="${artisan.id}">Request quote</button>
               <button type="button" data-action="profile" data-artisan-id="${artisan.id}">View profile</button>
